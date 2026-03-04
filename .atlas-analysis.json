@@ -1,0 +1,107 @@
+{
+  "projectType": "saas",
+  "projectName": "Elemental Battlecards",
+  "projectDescription": "A strategic multiplayer card game based on Set Theory with real-time LAN gameplay using Phaser and Socket.IO.",
+  "theme": "almond",
+  "primaryColor": "#FF6B35",
+  "lightColor": "#FFB88C",
+  "darkColor": "#C44D27",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Game Mechanics",
+            "pages": [
+              "game-mechanics/card-types",
+              "game-mechanics/combat-system",
+              "game-mechanics/fusion",
+              "game-mechanics/winning-conditions"
+            ]
+          },
+          {
+            "group": "Setup & Configuration",
+            "pages": [
+              "setup/lan-setup",
+              "setup/backend-configuration",
+              "setup/frontend-configuration",
+              "setup/troubleshooting"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/game-scenes",
+              "development/socket-events",
+              "development/contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Backend API",
+            "pages": [
+              "api/authentication",
+              "api/socket-events"
+            ]
+          },
+          {
+            "group": "Game Objects",
+            "pages": [
+              "api/player",
+              "api/card",
+              "api/deck",
+              "api/essences"
+            ]
+          },
+          {
+            "group": "Helpers",
+            "pages": [
+              "api/combat",
+              "api/constants"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time multiplayer LAN gameplay with Socket.IO",
+    "Strategic card combat system with type advantages",
+    "Card fusion mechanics to create higher-level cards",
+    "Six elemental card types: Fire, Water, Plant, Light, Shadow, Spirit",
+    "Turn-based gameplay with 12-second turn timer",
+    "User authentication and registration system"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/register",
+    "POST /api/auth/login",
+    "GET /ping",
+    "Socket: create_room",
+    "Socket: join_room",
+    "Socket: game_event",
+    "Socket: end_turn",
+    "Player.drawCard()",
+    "Player.playCardFromHand(instanceId, fieldIndex)",
+    "Player.fuseCards(draggedIndex, targetIndex)",
+    "Player.fuseFromHand(instanceId, targetIndex)",
+    "resolveCombat(attacker, defender)",
+    "Deck.draw()",
+    "Deck.shuffle()",
+    "Card class",
+    "EssenceManager class"
+  ]
+}
