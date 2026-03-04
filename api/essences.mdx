@@ -1,23 +1,30 @@
 ---
-title: "EssenceManager"
-description: "Manages the state of elemental essences for a player, handling activation and queries of essence types."
+title: "Essence System"
+description: "Manages the state of elemental essences for a player using JavaScript Set for tracking activated essence types."
 ---
 
 ## Overview
 
-The `EssenceManager` class encapsulates the logic for managing elemental essences in Elemental Battlecards. Each player has an EssenceManager that tracks which elemental types have been activated, enabling certain game mechanics and card abilities.
+The essence system in Elemental Battlecards tracks which elemental types have been activated through direct attacks. Each player has an essence Set that stores activated essence types. Filling all 6 essences is one of the victory conditions.
 
-## Constructor
+<Warning>
+**Implementation Note:** While the codebase includes an `EssenceManager` class in `/game_objects/essences.js`, the actual game implementation uses a native JavaScript `Set` for essence tracking, as seen in `GameScene.js`.
+</Warning>
 
-Initializes the essence manager with all essences in a deactivated state.
+## Actual Implementation (GameScene)
+
+Essences are implemented as a JavaScript `Set` in the game:
 
 ```javascript
-import EssenceManager from './essences.js';
+// From Frontend/src/scenes/GameScene.js:199-200
 
-const essences = new EssenceManager();
+this.player.essences = new Set();
+this.opponent.essences = new Set();
 ```
 
-**Initial State:** All six elemental essences start as `false` (deactivated):
+**Initial State:** The Set starts empty. Essence types are added via the `add()` method when direct attacks are performed.
+
+**The six essence types:**
 - Fire (fuego)
 - Water (agua)
 - Plant (planta)
@@ -27,66 +34,67 @@ const essences = new EssenceManager();
 
 ## Properties
 
-<ResponseField name="_essences" type="Object.<string, boolean>" private>
-  Internal object mapping card types to their activation state. Uses `CardTypes` constants as keys.
+<ResponseField name="essences" type="Set<string>">
+  A JavaScript Set containing activated essence types. Empty at game start, populated through direct attacks.
   
-  Structure:
-  ```javascript
-  {
-    'fuego': false,
-    'agua': false,
-    'planta': false,
-    'luz': false,
-    'sombra': false,
-    'espiritu': false
-  }
-  ```
+  **Type:** `Set<string>`
+  
+  **Possible values:**
+  - `'fuego'` (Fire)
+  - `'agua'` (Water)
+  - `'planta'` (Plant)
+  - `'luz'` (Light)
+  - `'sombra'` (Shadow)
+  - `'espiritu'` (Spirit)
 </ResponseField>
 
-## Methods
+## Key Operations
 
-### activate(type)
+### fillEssence(essenceType)
 
-Activates an essence of a specific elemental type. If the essence is already active, this method does nothing.
+Adds an essence type to the player's Set. This method is dynamically added to Player instances in `GameScene`.
 
-<ParamField path="type" type="string" required>
-  The type of essence to activate, using values from `CardTypes` constants:
-  - `'fuego'` - Fire
-  - `'agua'` - Water
-  - `'planta'` - Plant
-  - `'luz'` - Light
-  - `'sombra'` - Shadow
-  - `'espiritu'` - Spirit
+<ParamField path="essenceType" type="string" required>
+  The type of essence to activate (using `CARD_TYPES` values)
 </ParamField>
 
 ```javascript
-import { CARD_TYPES as CardTypes } from '../helpers/constants.js';
+// From Frontend/src/scenes/GameScene.js:203-214
 
-// Activate fire essence
-essences.activate(CardTypes.FUEGO);
-// Console: "Esencia de fuego activada."
-
-// Activate shadow essence
-essences.activate(CardTypes.SOMBRA);
-// Console: "Esencia de sombra activada."
-
-// Activate already active essence (no effect)
-essences.activate(CardTypes.FUEGO);
-// Console: "Esencia de fuego activada." (logged again, but state unchanged)
+playerInstance.fillEssence = function(essenceType) {
+  // Only add if not already present
+  if (!this.essences.has(essenceType)) {
+    this.essences.add(essenceType);
+    console.log('[GameScene] Essence activated', { 
+      playerId: this.id, 
+      essenceType, 
+      total: this.essences.size 
+    });
+    // Emit event for UI update
+    this.scene.events.emit('essence-activated', this.id, essenceType);
+  } else {
+    console.log('[GameScene] Essence already activated', { 
+      playerId: this.id, 
+      essenceType 
+    });
+  }
+};
 ```
 
-**Warning:** Attempting to activate an unknown essence type will log a warning:
+**Usage:**
 ```javascript
-essences.activate('invalid-type');
-// Console: "Se intentó activar una esencia de tipo desconocido: invalid-type"
+// Perform direct attack and fill essence
+this.player.fillEssence('fuego');  // Adds fire essence
+this.player.fillEssence('agua');   // Adds water essence
+this.player.fillEssence('fuego');  // No effect - already added
 ```
 
-### has(type)
+### has(essenceType)
 
-Checks whether an essence of a specific type is currently active.
+Checks if a specific essence type is in the Set.
 
-<ParamField path="type" type="string" required>
-  The type of essence to check
+<ParamField path="essenceType" type="string" required>
+  The essence type to check
 </ParamField>
 
 <ResponseField name="return" type="boolean">
@@ -94,109 +102,144 @@ Checks whether an essence of a specific type is currently active.
 </ResponseField>
 
 ```javascript
-// Check if fire essence is active
-if (essences.has(CardTypes.FUEGO)) {
+// Check if player has fire essence
+if (player.essences.has('fuego')) {
   console.log('Fire essence is active!');
-} else {
-  console.log('Fire essence is not active');
 }
 
-// Check multiple essences
-const canPlayCard = essences.has(CardTypes.AGUA) && essences.has(CardTypes.PLANTA);
-if (canPlayCard) {
-  console.log('Both water and plant essences are active');
+// Check before adding
+if (!player.essences.has('agua')) {
+  player.essences.add('agua');
 }
 ```
 
-### getAll()
+### size
 
-Returns a copy of the current state of all essences.
+Returns the number of activated essences.
 
-<ResponseField name="return" type="Object.<string, boolean>">
-  An object with all essence types as keys and their activation states as boolean values
+<ResponseField name="size" type="number">
+  The count of unique essence types in the Set (0-6)
 </ResponseField>
 
 ```javascript
-const allEssences = essences.getAll();
-console.log(allEssences);
-/*
-{
-  'fuego': true,
-  'agua': false,
-  'planta': false,
-  'luz': false,
-  'sombra': true,
-  'espiritu': false
-}
-*/
+// From Frontend/src/scenes/GameScene.js:1336-1343
 
-// Count active essences
-const activeCount = Object.values(allEssences).filter(active => active).length;
-console.log(`${activeCount} essences are active`);
+// Check for victory condition
+if (this.player.essences.size === 6) {
+  console.log('[GameScene] VICTORY: PLAYER (filled all 6 essences)');
+  return 'player';
+}
+
+// Display count
+console.log(`Player has ${this.player.essences.size} essences`);
 ```
 
-**Note:** This method returns a shallow copy using the spread operator (`{...this._essences}`), so modifying the returned object won't affect the internal state.
-
-## Usage Example
+## Complete Example
 
 ```javascript
-import EssenceManager from './essences.js';
-import { CARD_TYPES as CardTypes } from '../helpers/constants.js';
+// From Frontend/src/scenes/GameScene.js
 
 class GameScene extends Phaser.Scene {
   create() {
-    // Create essence manager for a player
-    const playerEssences = new EssenceManager();
+    // Initialize essence Sets for both players
+    this.player.essences = new Set();
+    this.opponent.essences = new Set();
     
-    // Activate essences as cards are played
-    this.events.on('cardPlayed', (cardType) => {
-      playerEssences.activate(cardType);
-      
-      // Check if specific essence is active
-      if (playerEssences.has(CardTypes.FUEGO)) {
-        this.enableFireAbilities();
-      }
-    });
+    // Add fillEssence method to players
+    const addFillEssence = (playerInstance) => {
+      playerInstance.fillEssence = function(essenceType) {
+        if (!this.essences.has(essenceType)) {
+          this.essences.add(essenceType);
+          console.log('[GameScene] Essence activated', { 
+            playerId: this.id, 
+            essenceType, 
+            total: this.essences.size 
+          });
+          this.scene.events.emit('essence-activated', this.id, essenceType);
+        }
+      };
+    };
     
-    // Display essence status
-    this.updateEssenceDisplay(playerEssences.getAll());
+    addFillEssence(this.player);
+    addFillEssence(this.opponent);
+  }
+  
+  handleDirectAttack(attackingCard) {
+    // Get card type
+    const attackerData = attackingCard.getData('cardData');
     
-    // Check for combos
-    if (playerEssences.has(CardTypes.AGUA) && playerEssences.has(CardTypes.FUEGO)) {
-      console.log('Steam combo available!');
+    // Fill essence matching the attacking card's type
+    this.player.fillEssence(attackerData.type);
+    
+    // Check for victory
+    if (this.player.essences.size === 6) {
+      this.endGame('player');
+    }
+  }
+  
+  checkVictoryConditions() {
+    // Check essence victory condition
+    if (this.player.essences.size === 6) {
+      console.log('[GameScene] VICTORY: PLAYER (filled all 6 essences)');
+      return 'player';
+    }
+    if (this.opponent.essences.size === 6) {
+      console.log('[GameScene] VICTORY: OPPONENT (filled all 6 essences)');
+      return 'opponent';
     }
     
-    // Count total active essences
-    const essenceState = playerEssences.getAll();
-    const activeEssences = Object.entries(essenceState)
-      .filter(([type, active]) => active)
-      .map(([type]) => type);
-    
-    console.log(`Active essences: ${activeEssences.join(', ')}`);
+    return null;
   }
 }
 ```
 
-## Integration with Player
+## How Essences Are Earned
 
-The EssenceManager is automatically created and managed by the Player class:
+Essences are filled through **direct attacks** only - when a player attacks while the opponent has no cards on the field:
 
 ```javascript
-import Player from './player.js';
+// From Frontend/src/scenes/GameScene.js:1237-1241
 
-const player = new Player('player1', scene);
+// Direct attack handling
+console.log('[GameScene] Player performs direct attack', { 
+  attackerType: attackerData.type, 
+  attackerIndex: attackingCardObject.getData('fieldIndex') 
+});
 
-// Access player's essences
-player.essences.activate(CardTypes.LUZ);
-
-if (player.essences.has(CardTypes.LUZ)) {
-  console.log('Player has activated light essence');
-}
-
-// Get all essence states for UI display
-const essenceStates = player.essences.getAll();
-this.updateEssenceUI(essenceStates);
+this.player.fillEssence(attackerData.type);
 ```
+
+**Key points:**
+- Direct attacks only occur when opponent's field is empty
+- Each direct attack fills the essence matching the attacking card's type
+- Each essence can only be filled once (Set prevents duplicates)
+- Need to perform direct attacks with all 6 different card types to win
+
+## UI Integration
+
+Essences are visually displayed in the UIScene:
+
+```javascript
+// From Frontend/src/scenes/uiScene.js
+
+// Listen for essence activation events
+this.gameScene.events.on('essence-activated', (playerId, essenceType) => {
+  // Update orb visual for the essence type
+  this.updateEssenceOrb(playerId, essenceType, true);
+});
+
+function updateEssenceOrb(playerId, essenceType, isActive) {
+  const orb = this.essenceOrbs[playerId][essenceType];
+  // Light up the orb or dim it
+  orb.setAlpha(isActive ? 1.0 : 0.3);
+}
+```
+
+**Visual Layout:**
+- 12 total orbs (6 per player)
+- Arranged in two triangular patterns per player
+- Gray when inactive, lit when active
+- Arrows show type advantage relationships
 
 ## Card Types Reference
 
@@ -214,29 +257,18 @@ CardTypes.SOMBRA     // 'sombra' - Shadow
 CardTypes.ESPIRITU   // 'espiritu' - Spirit
 ```
 
-## Typical Workflow
+## The EssenceManager Class (Unused)
 
-```javascript
-// 1. Initialize (automatically done by Player)
-const essences = new EssenceManager();
+While the codebase includes an `EssenceManager` class in `/Frontend/src/game_objects/essences.js`, it is **not used** in the actual game. The class provides an object-based approach to essence tracking with methods like `activate()`, `has()`, and `getAll()`, but `GameScene` implements essence tracking using native JavaScript Sets instead.
 
-// 2. Activate essences during gameplay
-function onCardPlayed(card) {
-  essences.activate(card.type);
-}
+If you're extending the game, you can choose to:
+1. **Use the current implementation:** Continue with `Set<string>` (simpler, native)
+2. **Migrate to EssenceManager:** Refactor to use the class (more structured, extensible)
 
-// 3. Check essences for game logic
-function canUseSpecialAbility(requiredType) {
-  return essences.has(requiredType);
-}
+The EssenceManager class source can be found in `/Frontend/src/game_objects/essences.js` if needed for future development.
 
-// 4. Display essence status in UI
-function updateUI() {
-  const allEssences = essences.getAll();
-  
-  for (const [type, isActive] of Object.entries(allEssences)) {
-    const icon = this.essenceIcons[type];
-    icon.setAlpha(isActive ? 1.0 : 0.3);
-  }
-}
-```
+## Related Documentation
+
+- [Winning Conditions](/game-mechanics/winning-conditions) - Essence victory condition (6 essences)
+- [Card Types](/game-mechanics/card-types) - The 6 elemental types
+- [Combat System](/game-mechanics/combat-system) - How to clear opponent's field for direct attacks

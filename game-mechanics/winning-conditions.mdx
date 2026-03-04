@@ -9,10 +9,10 @@ Elemental Battlecards offers two distinct paths to victory, allowing for diverse
 
 ## Victory Conditions
 
-### Condition 1: Unique Type Collection
+### Condition 1: Field Control (6 Unique Types)
 
-<Card title="Collect All 6 Card Types" icon="trophy">
-  Be the first player to have all 6 unique card types in your possession to win the game.
+<Card title="Control All 6 Card Types on Field" icon="trophy">
+  Be the first player to have all 6 unique card types on your battlefield to win the game.
 </Card>
 
 **The six required types:**
@@ -39,105 +39,174 @@ Elemental Battlecards offers two distinct paths to victory, allowing for diverse
 </CardGroup>
 
 ```javascript
-// From Frontend/src/helpers/constants.js
+// From Frontend/src/scenes/GameScene.js:1323-1333
 
-export const GAME_CONFIG = {
-    UNIQUE_TYPES_TO_WIN: 6,  // Need all 6 card types
-};
-
-export const CARD_TYPES = {
-    FUEGO: 'fuego',
-    AGUA: 'agua',
-    PLANTA: 'planta',
-    LUZ: 'luz',
-    SOMBRA: 'sombra',
-    ESPIRITU: 'espiritu'
-};
-```
-
-<Note>
-Card level doesn't matter for this condition - you just need at least one card of each type somewhere in your possession (hand, field, or deck).
-</Note>
-
-### Condition 2: Essence Collection
-
-<Card title="Collect 6 Essence Tokens" icon="gem">
-  Be the first player to collect 6 essence tokens to win the game.
-</Card>
-
-```javascript
-// From Frontend/src/helpers/constants.js
-
-export const GAME_CONFIG = {
-    ESSENCES_TO_WIN: 6,  // Need 6 essence tokens
-};
-```
-
-**How to earn essence:**
-
-Essence tokens are awarded when you defeat enemy cards in combat. The essence system is managed by the `EssenceManager` class:
-
-```javascript
-// From Frontend/src/game_objects/player.js
-
-import EssenceManager from './essences.js';
-
-export default class Player {
-    constructor(id, scene) {
-        this.id = id;
-        this.scene = scene;
-        this.essences = new EssenceManager();  // Tracks essence tokens
-        // ... other player properties
-    }
+// Victory condition: 6 unique types on field
+const playerFieldTypes = new Set(
+  this.player.field.filter(c => c).map(c => c.type)
+);
+if (playerFieldTypes.size === 6) {
+  console.log('[GameScene] VICTORY: PLAYER (field control - 6 types)');
+  return 'player';
 }
 ```
 
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    UNIQUE_TYPES_TO_WIN: 6,    // Need all 6 types ON FIELD
+    MAX_FIELD_SIZE: 6,         // Field has exactly 6 slots
+};
+```
+
+<Warning>
+Cards must be ON YOUR FIELD to count toward this victory condition. Cards in your hand, deck, or graveyard do not count. Card level doesn't matter - you just need at least one card of each type on the field.
+</Warning>
+
+### Condition 2: Complete All 6 Essences
+
+<Card title="Fill All 6 Essence Orbs" icon="gem">
+  Be the first player to activate all 6 elemental essences to win the game.
+</Card>
+
+```javascript
+// From Frontend/src/scenes/GameScene.js:1336-1343
+
+// Victory condition: All 6 essences filled
+if (this.player.essences.size === 6) {
+  console.log('[GameScene] VICTORY: PLAYER (filled all 6 essences)');
+  return 'player';
+}
+```
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    ESSENCES_TO_WIN: 6,  // Need all 6 essence types
+};
+```
+
+**How to earn essences:**
+
+Essences are earned through **direct attacks** - attacking when your opponent has NO cards on their field:
+
+```javascript
+// From Frontend/src/scenes/GameScene.js:1237-1241
+
+// Player performs direct attack
+console.log('[GameScene] Player performs direct attack', { 
+  attackerType: attackerData.type, 
+  attackerIndex: attackingCardObject.getData('fieldIndex') 
+});
+
+this.player.fillEssence(attackerData.type);
+```
+
 <Tabs>
-  <Tab title="Earning Essences">
-    **Win Combat**: When your card defeats an opponent's card in battle, you earn essence tokens.
+  <Tab title="Direct Attack Mechanism">
+    **When opponent's field is empty:**
+    1. Select one of your cards on the field
+    2. Perform an attack action
+    3. Since no enemy cards exist, this becomes a "direct attack"
+    4. You gain the essence matching your attacking card's type
     
-    The number of essences earned may depend on:
-    - The level of the defeated card
-    - The type of combat victory
-    - Special game events
+    **Example:**
+    - You attack with a Fire card when opponent has no field cards
+    - You gain the Fire essence orb
+    - The Fire essence lights up in the UI
     
     <Note>
-    Check the EssenceManager implementation for exact essence award rules.
+    Each essence can only be earned once. If you already have the Fire essence and do another direct attack with Fire, nothing happens.
     </Note>
   </Tab>
   <Tab title="Tracking Progress">
-    **Monitor your essences**: Your essence count is tracked throughout the game.
+    **Visual indicators**: Essence orbs are displayed on both sides of the game board in two triangular arrangements:
     
-    Once you reach 6 essences, victory is automatically triggered.
+    **Top Triangle (Elemental):**
+    - Fire → Plant → Water
     
-    **Strategic tip**: Focus on winning combats to rapidly accumulate essences.
+    **Bottom Triangle (Mystical):**
+    - Light → Shadow → Spirit
+    
+    **State:**
+    - Gray = Not yet earned
+    - Lit up = Earned
+    
+    Once you have all 6 orbs lit, victory is automatically triggered.
   </Tab>
 </Tabs>
+
+<Warning>
+Essences are ONLY earned through direct attacks when the opponent's field is empty. Regular combat victories do NOT award essences.
+</Warning>
+
+### Condition 3: Opponent Inactivity
+
+<Card title="Win by Opponent Timeout" icon="hourglass">
+  If your opponent fails to take any action for 3 consecutive turns, you win automatically.
+</Card>
+
+```javascript
+// From Frontend/src/scenes/GameScene.js:1313-1321
+
+// Victory by inactivity
+if (this.playerInactiveTurns >= 3) {
+  console.log('[GameScene] VICTORY: OPPONENT (player inactivity)');
+  return 'opponent';
+}
+if (this.opponentInactiveTurns >= 3) {
+  console.log('[GameScene] VICTORY: PLAYER (opponent inactivity)');
+  return 'player';
+}
+```
+
+**How inactivity is tracked:**
+
+- Each player has an inactivity counter
+- Counter increments when no action is taken during a turn
+- Counter resets to 0 when any action is performed (place card, attack, or fuse)
+- After 3 consecutive inactive turns, the inactive player loses
+
+**What counts as "activity":**
+- Placing a card from hand to field
+- Attacking with a card
+- Fusing two cards
+
+**What does NOT count:**
+- Letting the turn timer run out
+- Opening menus
+- Hovering over cards
+
+<Info>
+This prevents stalling and ensures games progress. Combined with the 12-second turn timer, this creates a sense of urgency and prevents indefinite matches.
+</Info>
 
 ## Victory Path Comparison
 
 <CardGroup cols={2}>
-  <Card title="Type Collection Path" icon="layer-group">
-    **Focus:** Deck diversity and card draw
+  <Card title="Field Control Path" icon="layer-group">
+    **Focus:** Maintaining battlefield diversity
     
     **Strategy:**
-    - Build a balanced deck with all types
-    - Draw cards aggressively
-    - Protect cards of rare types you're missing
-    - Can win without combat if you draw all types
+    - Place all 6 different types on your field
+    - Protect diverse cards from being destroyed
+    - Manage your 6 field slots efficiently
+    - Balance offense and defense
     
-    **Time to win:** Can be very fast with lucky draws
+    **Time to win:** Mid-game (requires placing and protecting 6 cards)
   </Card>
-  <Card title="Essence Path" icon="swords">
-    **Focus:** Combat dominance and card destruction
+  <Card title="Essence Path" icon="gem">
+    **Focus:** Aggressive field clearing and direct attacks
     
     **Strategy:**
-    - Create high-level cards through fusion
-    - Attack aggressively
-    - Target vulnerable enemy cards
-    - Win through consistent combat victories
+    - Clear opponent's field completely
+    - Perform direct attacks with all 6 card types
+    - Create high-level cards to dominate combat
+    - Force opponent to empty their field
     
-    **Time to win:** Requires multiple successful combats
+    **Time to win:** Late-game (requires 6 separate direct attacks)
   </Card>
 </CardGroup>
 
@@ -165,37 +234,37 @@ Decision: Stay flexible and pressure opponent
 Action: Maintain board control, force opponent errors
 ```
 
-### Type Collection Strategy
+### Field Control Strategy
 
 <CardGroup cols={2}>
-  <Card title="Deck Building" icon="cards">
-    Ensure your initial deck contains all 6 types. The standard deck has 48 cards (8 of each type × 6 types).
+  <Card title="Diversity First" icon="layer-group">
+    Prioritize placing different types over same-type cards. With 6 field slots and 6 required types, every slot must be a different type.
   </Card>
-  <Card title="Card Draw" icon="hand">
-    Maximize card draw to increase chances of collecting all types quickly.
+  <Card title="Defensive Positioning" icon="shield-halved">
+    Once you have all 6 types on field, play defensively to protect them. Use type advantages to counter enemy attacks.
   </Card>
-  <Card title="Type Tracking" icon="list-check">
-    Keep mental track of which types you've seen and which you still need.
+  <Card title="Replace, Don't Fuse" icon="rotate">
+    Avoid fusing cards when pursuing field control - fusion removes one card and reduces diversity.
   </Card>
-  <Card title="Defensive Play" icon="shield-halved">
-    Once you have rare types, protect them - losing them to combat sets you back.
+  <Card title="Rapid Deployment" icon="bolt">
+    Place cards quickly early game to establish board presence across all types before opponent can pressure you.
   </Card>
 </CardGroup>
 
 ### Essence Collection Strategy
 
 <CardGroup cols={2}>
-  <Card title="Fusion Focus" icon="fire-flame-curved">
-    Create Level 2 and 3 cards to dominate combat and destroy enemy cards.
+  <Card title="Field Clearing" icon="broom">
+    Focus on destroying ALL opponent cards to create direct attack opportunities. Level 2-3 cards excel at this.
   </Card>
-  <Card title="Type Advantage" icon="bolt">
-    Target enemies with type disadvantages for guaranteed essence gains.
+  <Card title="Diverse Attacks" icon="sparkles">
+    Keep one card of each type available for direct attacks. You need to perform direct attacks with all 6 types.
   </Card>
-  <Card title="Aggressive Play" icon="chess-knight">
-    Attack frequently to accumulate essences faster than your opponent.
+  <Card title="Maintain Pressure" icon="sword">
+    After clearing opponent's field, immediately perform direct attack before they can place new cards.
   </Card>
-  <Card title="Level Advantage" icon="arrow-up">
-    Maintain level superiority to win combats reliably.
+  <Card title="Combat Dominance" icon="fire-flame-curved">
+    Invest in fusion to create Level 3 cards - they have combat advantage and can sweep opponent's field reliably.
   </Card>
 </CardGroup>
 
@@ -221,15 +290,39 @@ export const GAME_CONFIG = {
 The mandatory attack rule on turn 3 prevents pure defensive strategies. You must engage in combat, which opens paths for both victory conditions.
 </Warning>
 
-## Victory Triggers
+## Victory Check Timing
 
-The game continuously checks for victory conditions:
+The game checks for victory conditions at specific moments:
 
-- **After each draw**: Check if player has all 6 unique types
-- **After each combat**: Check if player has reached 6 essences
-- **After each turn**: Validate victory conditions
+```javascript
+// From Frontend/src/scenes/GameScene.js
 
-The first player to meet either condition wins immediately.
+checkVictoryConditions() {
+  // 1. Check inactivity (3 turns)
+  if (this.playerInactiveTurns >= 3) return 'opponent';
+  if (this.opponentInactiveTurns >= 3) return 'player';
+  
+  // 2. Check field control (6 unique types on field)
+  const playerFieldTypes = new Set(this.player.field.filter(c => c).map(c => c.type));
+  if (playerFieldTypes.size === 6) return 'player';
+  
+  const opponentFieldTypes = new Set(this.opponent.field.filter(c => c).map(c => c.type));
+  if (opponentFieldTypes.size === 6) return 'opponent';
+  
+  // 3. Check essences (6 filled)
+  if (this.player.essences.size === 6) return 'player';
+  if (this.opponent.essences.size === 6) return 'opponent';
+  
+  return null; // No winner yet
+}
+```
+
+**Check moments:**
+- **After each turn ends**: All conditions checked in priority order
+- **After direct attack**: Essence count checked immediately
+- **After placing 6th unique type**: Field control checked
+
+The first player to meet any condition wins immediately. Checks happen in priority order: inactivity → field control → essences.
 
 ## Advanced Tips
 
