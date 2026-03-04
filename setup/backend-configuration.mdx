@@ -1,0 +1,347 @@
+---
+title: 'Backend Configuration'
+description: 'Complete guide to configuring the Elemental Battlecards backend server, database options, and environment variables'
+---
+
+The backend server is built with Express.js and Socket.IO, providing REST API endpoints and real-time multiplayer functionality.
+
+## Environment Variables
+
+The backend uses environment variables for configuration. Create a `.env` file in the `Backend/` directory based on `.env.example`.
+
+### Required Variables
+
+<CodeGroup>
+```env .env.example
+# Ejemplo de variables de entorno para Backend
+PORT=3000
+# Postgres connection using separate variables
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=elemental
+DB_USER=postgres
+DB_PASS=postgres_password
+JWT_SECRET=tu_secreto_super_secreto_y_largo
+# Si quieres ejecutar sin Postgres para pruebas locales, activa SQLite en memoria
+# DB_USE_SQLITE=true
+```
+
+```env LAN Configuration
+PORT=3001
+NODE_ENV=development
+DB_USE_SQLITE=true
+JWT_SECRET=your_jwt_secret_key_here
+CORS_ORIGIN=*
+DB_ENABLED=false
+```
+</CodeGroup>
+
+### Configuration Reference
+
+<Accordion title="Server Configuration">
+  **PORT**
+  - **Type:** Number
+  - **Default:** `3001`
+  - **Description:** Port on which the server listens for HTTP connections
+  - **Location:** `server.js:13`
+  
+  **NODE_ENV**
+  - **Type:** String
+  - **Values:** `development`, `test`, `production`
+  - **Default:** `development`
+  - **Description:** Environment mode for the application
+  
+  **CORS_ORIGIN**
+  - **Type:** String
+  - **Default:** `*`
+  - **Description:** CORS origin policy. Use `*` for LAN play, specific origins for production
+  - **Location:** `server.js:34`
+  
+  **DB_ENABLED**
+  - **Type:** Boolean
+  - **Default:** `false`
+  - **Description:** Enable/disable authentication routes and database features
+  - **Location:** `server.js:38`
+</Accordion>
+
+<Accordion title="Database Configuration - PostgreSQL">
+  **DB_HOST**
+  - **Type:** String
+  - **Default:** `127.0.0.1`
+  - **Description:** PostgreSQL server hostname or IP address
+  - **Location:** `config/db.js:20`
+  
+  **DB_PORT**
+  - **Type:** Number
+  - **Default:** `5432`
+  - **Description:** PostgreSQL server port
+  - **Location:** `config/db.js:21`
+  
+  **DB_NAME**
+  - **Type:** String
+  - **Default:** `elemental`
+  - **Description:** Database name
+  - **Location:** `config/db.js:22`
+  
+  **DB_USER**
+  - **Type:** String
+  - **Default:** `postgres`
+  - **Description:** Database user for authentication
+  - **Location:** `config/db.js:23`
+  
+  **DB_PASS**
+  - **Type:** String
+  - **Default:** `password`
+  - **Description:** Database password
+  - **Location:** `config/db.js:24`
+  
+  **DB_REQUIRE_SSL**
+  - **Type:** Boolean
+  - **Default:** `true`
+  - **Description:** Enable SSL for database connections (recommended for production)
+  - **Location:** `config/db.js:14`
+</Accordion>
+
+<Accordion title="Database Configuration - SQLite">
+  **DB_USE_SQLITE**
+  - **Type:** Boolean
+  - **Default:** `false`
+  - **Description:** Use SQLite in-memory database instead of PostgreSQL
+  - **Location:** `config/db.js:4`
+  
+  <Info>
+    When `DB_USE_SQLITE=true`, the application uses an in-memory SQLite database. This is perfect for:
+    - Local development
+    - LAN play without external dependencies
+    - Quick testing
+    
+    **Note:** Data is lost when the server stops.
+  </Info>
+</Accordion>
+
+<Accordion title="Security Configuration">
+  **JWT_SECRET**
+  - **Type:** String
+  - **Required:** Yes (if authentication is enabled)
+  - **Description:** Secret key for signing JWT authentication tokens
+  - **Best Practice:** Use a long, random string (minimum 32 characters)
+  
+  <Warning>
+    Never commit your actual JWT secret to version control. Always use environment variables and keep `.env` in `.gitignore`.
+  </Warning>
+</Accordion>
+
+## Database Setup
+
+### Option 1: SQLite (Recommended for LAN)
+
+For local/LAN play, SQLite provides a zero-configuration database:
+
+```env
+DB_USE_SQLITE=true
+DB_ENABLED=false
+```
+
+**Benefits:**
+- No external database server required
+- Perfect for LAN gameplay
+- Zero configuration
+- Fast and lightweight
+
+**Code Reference:**
+```javascript config/db.js:7-12
+if (useSqlite) {
+    sequelize = new Sequelize({
+        dialect: 'sqlite',
+        storage: ':memory:',
+        logging: false,
+    });
+}
+```
+
+### Option 2: PostgreSQL (Production)
+
+For production deployments with persistent data:
+
+<Steps>
+  <Step title="Install PostgreSQL">
+    Install PostgreSQL on your server or use a managed service like Heroku Postgres, AWS RDS, or Railway.
+  </Step>
+
+  <Step title="Create Database">
+    ```sql
+    CREATE DATABASE elemental;
+    CREATE USER elemental_user WITH PASSWORD 'secure_password';
+    GRANT ALL PRIVILEGES ON DATABASE elemental TO elemental_user;
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    ```env
+    DB_HOST=your-db-host.com
+    DB_PORT=5432
+    DB_NAME=elemental
+    DB_USER=elemental_user
+    DB_PASS=secure_password
+    DB_REQUIRE_SSL=true
+    DB_USE_SQLITE=false
+    ```
+  </Step>
+
+  <Step title="Test Connection">
+    Start the server and check for the connection message:
+    ```
+    DB conectado y SSL: true
+    ```
+  </Step>
+</Steps>
+
+**Code Reference:**
+```javascript config/db.js:14-32
+const requireSSL = ((process.env.DB_REQUIRE_SSL || 'true').toString().toLowerCase() === 'true');
+
+const dialectOptions = requireSSL
+    ? { ssl: { require: true, rejectUnauthorized: false } }
+    : undefined;
+
+sequelize = new Sequelize(database, username, password, {
+    host,
+    port,
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions,
+});
+```
+
+## Server Configuration
+
+### Socket.IO Configuration
+
+The server uses Socket.IO for real-time communication:
+
+```javascript server.js:58-59
+const { Server } = require('socket.io');
+const io = new Server(server, { cors: { origin: '*' } });
+```
+
+<Info>
+  CORS is set to `*` to allow connections from any origin, which is necessary for LAN play where clients connect from different IP addresses.
+</Info>
+
+### Network Binding
+
+The server binds to all network interfaces to accept LAN connections:
+
+```javascript server.js:63
+server.listen(PORT, '0.0.0.0', () => {
+    displayNetworkInfo(PORT);
+});
+```
+
+<Warning>
+  Binding to `0.0.0.0` allows connections from all network interfaces. This is required for LAN play but should be configured carefully in production environments.
+</Warning>
+
+## Authentication Routes
+
+Authentication routes are conditionally loaded based on database availability:
+
+```javascript server.js:38-49
+const dbEnabled = (process.env.DB_ENABLED || 'false').toLowerCase() === 'true';
+if (dbEnabled && sequelize) {
+    try {
+        const authRoutes = require('./routes/authRoutes');
+        app.use('/api/auth', authRoutes);
+        console.log('Rutas de autenticación habilitadas');
+    } catch (err) {
+        console.warn('No se pudieron cargar las rutas de autenticación:', err.message);
+    }
+} else {
+    console.log('Rutas de autenticación deshabilitadas (modo LAN)');
+}
+```
+
+## Configuration Files
+
+### config.js
+
+Loads database configuration from `config.json` and merges with environment variables:
+
+```javascript config/config.js
+const dbConfig = {
+    development: {
+        ...config.development,
+        username: process.env.DB_USER,
+        password: process.env.DB_PASS,
+        database: process.env.DB_NAME,
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+    },
+    // ... test and production configs
+};
+```
+
+### config.json
+
+Defines base database configuration with SSL settings:
+
+```json config/config.json
+{
+  "development": {
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
+  }
+}
+```
+
+## Starting the Server
+
+### Development Mode
+
+```bash
+cd Backend
+npm run dev
+```
+
+### Production Mode
+
+```bash
+cd Backend
+NODE_ENV=production npm start
+```
+
+## Verifying Configuration
+
+Check that your server is properly configured:
+
+<Steps>
+  <Step title="Check Server Status">
+    ```bash
+    curl http://localhost:3001/ping
+    ```
+    
+    Expected response:
+    ```json
+    {"ok":true,"time":1234567890,"host":"localhost"}
+    ```
+  </Step>
+
+  <Step title="Check Database Connection">
+    Look for this message in the server logs:
+    ```
+    DB conectado y SSL: [true/false]
+    ```
+  </Step>
+
+  <Step title="Check Network Access">
+    The server should display network information on startup:
+    ```
+    Servidor corriendo en http://0.0.0.0:3001
+    ```
+  </Step>
+</Steps>

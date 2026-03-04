@@ -1,0 +1,210 @@
+---
+title: 'Authentication'
+description: 'User registration, login, and health check endpoints'
+---
+
+The Elemental Battlecards API provides authentication endpoints for user registration and login using JWT tokens. All authentication routes are prefixed with `/api/auth`.
+
+<Note>
+  Authentication endpoints are only available when `DB_ENABLED=true` is set in the environment configuration. In LAN mode, these routes are disabled.
+</Note>
+
+## Register User
+
+<CodeGroup>
+```bash POST /api/auth/register
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "player1",
+    "email": "player1@example.com",
+    "password": "securepassword123"
+  }'
+```
+</CodeGroup>
+
+Registers a new user account. Passwords are hashed using bcrypt with a salt factor of 10 before storage.
+
+### Request Body
+
+<ParamField body="username" type="string" required>
+  The username for the new account. Must be unique.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  The email address for the new account. Must be unique and not already registered.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The password for the new account. Will be hashed before storage.
+</ParamField>
+
+### Response
+
+<ResponseField name="message" type="string">
+  Success or error message describing the result of the registration attempt.
+</ResponseField>
+
+<CodeGroup>
+```json 201 Success
+{
+  "message": "Usuario registrado exitosamente."
+}
+```
+
+```json 400 Missing Fields
+{
+  "message": "Por favor, proporciona todos los campos."
+}
+```
+
+```json 400 Email In Use
+{
+  "message": "El correo electrónico ya está en uso."
+}
+```
+
+```json 500 Server Error
+{
+  "message": "Error en el servidor."
+}
+```
+</CodeGroup>
+
+---
+
+## Login User
+
+<CodeGroup>
+```bash POST /api/auth/login
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "player1",
+    "password": "securepassword123"
+  }'
+```
+</CodeGroup>
+
+Authenticates a user and returns a JWT token valid for 1 hour. The token should be included in subsequent requests that require authentication.
+
+### Request Body
+
+<ParamField body="username" type="string" required>
+  The username of the account to log in.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The password for the account.
+</ParamField>
+
+### Response
+
+<ResponseField name="token" type="string">
+  JWT authentication token valid for 1 hour. Contains user ID and username in the payload.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Error message if authentication fails.
+</ResponseField>
+
+<CodeGroup>
+```json 200 Success
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+```json 400 Missing Fields
+{
+  "message": "Por favor, proporciona todos los campos."
+}
+```
+
+```json 400 Invalid Credentials
+{
+  "message": "Credenciales inválidas."
+}
+```
+
+```json 500 Server Error
+{
+  "message": "Error en el servidor."
+}
+```
+</CodeGroup>
+
+### JWT Token Payload
+
+The JWT token contains the following payload structure:
+
+```javascript
+{
+  user: {
+    id: user.id,
+    username: user.username
+  }
+}
+```
+
+<Info>
+  Tokens expire after 1 hour. Clients should handle token expiration and prompt users to re-authenticate.
+</Info>
+
+---
+
+## Health Check
+
+<CodeGroup>
+```bash GET /ping
+curl http://localhost:3001/ping
+```
+</CodeGroup>
+
+Simple health check endpoint to verify the API server is running and responding to requests.
+
+### Response
+
+<ResponseField name="ok" type="boolean">
+  Always returns `true` when the server is operational.
+</ResponseField>
+
+<ResponseField name="time" type="number">
+  Current server timestamp in milliseconds (Unix epoch).
+</ResponseField>
+
+<ResponseField name="host" type="string">
+  The hostname from the request.
+</ResponseField>
+
+<CodeGroup>
+```json 200 Response
+{
+  "ok": true,
+  "time": 1709539200000,
+  "host": "localhost"
+}
+```
+</CodeGroup>
+
+<Note>
+  The `/ping` endpoint does not require authentication and is always available regardless of database configuration.
+</Note>
+
+---
+
+## Security Notes
+
+<Warning>
+  - Passwords are hashed using bcrypt with a salt factor of 10
+  - JWT tokens use the `JWT_SECRET` environment variable for signing
+  - Ensure `JWT_SECRET` is set to a strong, random value in production
+  - Database SSL is configurable via `DB_REQUIRE_SSL` environment variable
+</Warning>
+
+## Implementation Reference
+
+Authentication logic is implemented in:
+- Routes: `Backend/routes/authRoutes.js:7-13`
+- Controller: `Backend/controllers/authController.js`
+- Server configuration: `Backend/server.js:38-49`

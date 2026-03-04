@@ -1,0 +1,219 @@
+---
+title: "Deck"
+description: "Manages a collection of cards, handling deck creation, shuffling, and drawing operations."
+---
+
+## Overview
+
+The `Deck` class manages a player's deck of cards in Elemental Battlecards. It handles the initial deck creation according to game rules, shuffling, and drawing cards during gameplay.
+
+## Constructor
+
+<ParamField path="ownerId" type="string" required>
+  The ID of the player who owns this deck (e.g., 'player1' or 'player2')
+</ParamField>
+
+```javascript
+import Deck from './deck.js';
+
+const deck = new Deck('player1');
+console.log(deck.getCardsCount()); // 48 (initial deck size)
+```
+
+## Properties
+
+<ResponseField name="ownerId" type="string">
+  The player ID who owns this deck
+</ResponseField>
+
+<ResponseField name="cards" type="Array<object>">
+  Array of card data objects in the deck. Each object contains:
+  - `id`: Card identifier
+  - `type`: Elemental type
+  - `level`: Card level (always 1 for initial deck)
+  - `owner`: Player ID
+</ResponseField>
+
+## Methods
+
+### createInitialDeck()
+
+Creates an initial deck according to game Rule #7: 8 copies of each elemental type, all at level 1.
+
+<ResponseField name="return" type="Array<object>">
+  A shuffled array of 48 card data objects (6 types × 8 copies each)
+</ResponseField>
+
+```javascript
+const initialDeck = deck.createInitialDeck();
+console.log(initialDeck.length); // 48
+```
+
+**Initial Deck Composition:**
+- 8 × Fire (fuego) level 1 cards
+- 8 × Water (agua) level 1 cards
+- 8 × Plant (planta) level 1 cards
+- 8 × Light (luz) level 1 cards
+- 8 × Shadow (sombra) level 1 cards
+- 8 × Spirit (espiritu) level 1 cards
+
+**Total:** 48 cards, automatically shuffled
+
+### shuffle(deck)
+
+Shuffles the deck using the Fisher-Yates algorithm. Can shuffle the current deck or a provided deck array.
+
+<ParamField path="deck" type="Array<object>" default="this.cards">
+  The deck array to shuffle. If not provided, shuffles `this.cards`
+</ParamField>
+
+<ResponseField name="return" type="Array<object>">
+  The shuffled deck array
+</ResponseField>
+
+```javascript
+// Shuffle the current deck
+deck.shuffle();
+
+// Shuffle a specific array
+const customDeck = [card1, card2, card3];
+const shuffled = deck.shuffle(customDeck);
+```
+
+**Algorithm:** Uses the Fisher-Yates shuffle algorithm for uniform randomization:
+
+```javascript
+for (let i = deck.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [deck[i], deck[j]] = [deck[j], deck[i]];
+}
+```
+
+### draw()
+
+Draws the top card from the deck (removes and returns the last element).
+
+<ResponseField name="return" type="object|undefined">
+  The card data object that was drawn, or `undefined` if the deck is empty
+</ResponseField>
+
+```javascript
+const drawnCard = deck.draw();
+
+if (drawnCard) {
+  console.log(`Drew: ${drawnCard.id}`);
+  console.log(`Type: ${drawnCard.type}, Level: ${drawnCard.level}`);
+} else {
+  console.log('Deck is empty!');
+}
+```
+
+**Note:** This method uses `Array.pop()`, so it removes the card from the deck array.
+
+### getCardsCount()
+
+Returns the number of cards remaining in the deck.
+
+<ResponseField name="return" type="number">
+  The number of cards currently in the deck
+</ResponseField>
+
+```javascript
+console.log(`Cards remaining: ${deck.getCardsCount()}`);
+
+if (deck.getCardsCount() === 0) {
+  console.log('Need to refill from graveyard!');
+}
+```
+
+## Usage Example
+
+```javascript
+import Deck from './deck.js';
+import { CardDefinitions } from './card-definitions.js';
+
+class GameScene extends Phaser.Scene {
+  create() {
+    // Create a deck for player 1
+    const player1Deck = new Deck('player1');
+    
+    console.log(`Initial deck size: ${player1Deck.getCardsCount()}`); // 48
+    
+    // Draw some cards
+    const hand = [];
+    for (let i = 0; i < 4; i++) {
+      const card = player1Deck.draw();
+      if (card) {
+        hand.push(card);
+        console.log(`Drew: ${card.id}`);
+      }
+    }
+    
+    console.log(`Cards left in deck: ${player1Deck.getCardsCount()}`); // 44
+    
+    // Shuffle the deck
+    player1Deck.shuffle();
+    console.log('Deck shuffled!');
+    
+    // Add cards back to deck (e.g., from graveyard)
+    const graveyardCards = [
+      { id: 'fuego-1', type: 'fuego', level: 1, owner: 'player1' },
+      { id: 'agua-1', type: 'agua', level: 1, owner: 'player1' }
+    ];
+    
+    player1Deck.cards.push(...graveyardCards);
+    player1Deck.shuffle();
+    
+    console.log(`Deck size after refill: ${player1Deck.getCardsCount()}`);
+  }
+}
+```
+
+## Integration with Player
+
+The Deck class is typically used through the Player class:
+
+```javascript
+import Player from './player.js';
+
+const player = new Player('player1', scene);
+
+// Player automatically creates and manages a deck
+console.log(player.deck.getCardsCount()); // 48
+
+// Draw cards through player methods
+player.drawInitialHand(); // Draws 4 cards
+
+// Player handles deck refilling automatically
+const card = player.drawCard(); // Refills from graveyard if deck is empty
+```
+
+## Card Definition Format
+
+Cards in the deck reference definitions from `card-definitions.js`:
+
+```javascript
+// Each card in the deck looks like:
+{
+  id: 'fuego-1',        // From CardDefinitions
+  type: 'fuego',        // From CardDefinitions
+  level: 1,             // From CardDefinitions
+  owner: 'player1'      // Added by Deck constructor
+}
+```
+
+## Constants Used
+
+The Deck class uses the following constants from `helpers/constants.js`:
+
+- `CARD_TYPES`: Object containing all card type identifiers
+- `GAME_CONFIG.INITIAL_DECK_SIZE`: The size of the initial deck (48)
+
+```javascript
+import { CARD_TYPES, GAME_CONFIG } from '../helpers/constants.js';
+
+const types = Object.values(CARD_TYPES);
+// ['fuego', 'agua', 'planta', 'luz', 'sombra', 'espiritu']
+
+const deckSize = GAME_CONFIG.INITIAL_DECK_SIZE; // 48
+```

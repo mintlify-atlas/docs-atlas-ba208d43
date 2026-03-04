@@ -1,0 +1,267 @@
+---
+title: 'Winning Conditions'
+description: 'Learn the two paths to victory: collecting unique card types or gathering essence tokens'
+---
+
+## Overview
+
+Elemental Battlecards offers two distinct paths to victory, allowing for diverse strategic approaches. You can win by either collecting all card types or gathering enough essence tokens.
+
+## Victory Conditions
+
+### Condition 1: Unique Type Collection
+
+<Card title="Collect All 6 Card Types" icon="trophy">
+  Be the first player to have all 6 unique card types in your possession to win the game.
+</Card>
+
+**The six required types:**
+
+<CardGroup cols={3}>
+  <Card title="Fire" icon="fire">
+    Fuego
+  </Card>
+  <Card title="Water" icon="droplet">
+    Agua
+  </Card>
+  <Card title="Plant" icon="leaf">
+    Planta
+  </Card>
+  <Card title="Light" icon="sun">
+    Luz
+  </Card>
+  <Card title="Shadow" icon="moon">
+    Sombra
+  </Card>
+  <Card title="Spirit" icon="sparkles">
+    Espíritu
+  </Card>
+</CardGroup>
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    UNIQUE_TYPES_TO_WIN: 6,  // Need all 6 card types
+};
+
+export const CARD_TYPES = {
+    FUEGO: 'fuego',
+    AGUA: 'agua',
+    PLANTA: 'planta',
+    LUZ: 'luz',
+    SOMBRA: 'sombra',
+    ESPIRITU: 'espiritu'
+};
+```
+
+<Note>
+Card level doesn't matter for this condition - you just need at least one card of each type somewhere in your possession (hand, field, or deck).
+</Note>
+
+### Condition 2: Essence Collection
+
+<Card title="Collect 6 Essence Tokens" icon="gem">
+  Be the first player to collect 6 essence tokens to win the game.
+</Card>
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    ESSENCES_TO_WIN: 6,  // Need 6 essence tokens
+};
+```
+
+**How to earn essence:**
+
+Essence tokens are awarded when you defeat enemy cards in combat. The essence system is managed by the `EssenceManager` class:
+
+```javascript
+// From Frontend/src/game_objects/player.js
+
+import EssenceManager from './essences.js';
+
+export default class Player {
+    constructor(id, scene) {
+        this.id = id;
+        this.scene = scene;
+        this.essences = new EssenceManager();  // Tracks essence tokens
+        // ... other player properties
+    }
+}
+```
+
+<Tabs>
+  <Tab title="Earning Essences">
+    **Win Combat**: When your card defeats an opponent's card in battle, you earn essence tokens.
+    
+    The number of essences earned may depend on:
+    - The level of the defeated card
+    - The type of combat victory
+    - Special game events
+    
+    <Note>
+    Check the EssenceManager implementation for exact essence award rules.
+    </Note>
+  </Tab>
+  <Tab title="Tracking Progress">
+    **Monitor your essences**: Your essence count is tracked throughout the game.
+    
+    Once you reach 6 essences, victory is automatically triggered.
+    
+    **Strategic tip**: Focus on winning combats to rapidly accumulate essences.
+  </Tab>
+</Tabs>
+
+## Victory Path Comparison
+
+<CardGroup cols={2}>
+  <Card title="Type Collection Path" icon="layer-group">
+    **Focus:** Deck diversity and card draw
+    
+    **Strategy:**
+    - Build a balanced deck with all types
+    - Draw cards aggressively
+    - Protect cards of rare types you're missing
+    - Can win without combat if you draw all types
+    
+    **Time to win:** Can be very fast with lucky draws
+  </Card>
+  <Card title="Essence Path" icon="swords">
+    **Focus:** Combat dominance and card destruction
+    
+    **Strategy:**
+    - Create high-level cards through fusion
+    - Attack aggressively
+    - Target vulnerable enemy cards
+    - Win through consistent combat victories
+    
+    **Time to win:** Requires multiple successful combats
+  </Card>
+</CardGroup>
+
+## Strategic Considerations
+
+### Dual-Path Strategy
+
+<Note>
+The best players pursue both victory conditions simultaneously, adapting based on game flow.
+</Note>
+
+**Example strategic decisions:**
+
+```
+Situation: You have 5/6 types and 3 essences
+Decision: Focus on drawing cards to find the missing type
+Action: Play defensively, draw aggressively
+
+Situation: You have 3/6 types but 5 essences
+Decision: Go for the essence victory
+Action: Attack aggressively to get the final essence
+
+Situation: You have 4/6 types and 4 essences
+Decision: Stay flexible and pressure opponent
+Action: Maintain board control, force opponent errors
+```
+
+### Type Collection Strategy
+
+<CardGroup cols={2}>
+  <Card title="Deck Building" icon="cards">
+    Ensure your initial deck contains all 6 types. The standard deck has 48 cards (8 of each type × 6 types).
+  </Card>
+  <Card title="Card Draw" icon="hand">
+    Maximize card draw to increase chances of collecting all types quickly.
+  </Card>
+  <Card title="Type Tracking" icon="list-check">
+    Keep mental track of which types you've seen and which you still need.
+  </Card>
+  <Card title="Defensive Play" icon="shield-halved">
+    Once you have rare types, protect them - losing them to combat sets you back.
+  </Card>
+</CardGroup>
+
+### Essence Collection Strategy
+
+<CardGroup cols={2}>
+  <Card title="Fusion Focus" icon="fire-flame-curved">
+    Create Level 2 and 3 cards to dominate combat and destroy enemy cards.
+  </Card>
+  <Card title="Type Advantage" icon="bolt">
+    Target enemies with type disadvantages for guaranteed essence gains.
+  </Card>
+  <Card title="Aggressive Play" icon="chess-knight">
+    Attack frequently to accumulate essences faster than your opponent.
+  </Card>
+  <Card title="Level Advantage" icon="arrow-up">
+    Maintain level superiority to win combats reliably.
+  </Card>
+</CardGroup>
+
+## Game Configuration
+
+All victory-related constants are defined in the game configuration:
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    MAX_HAND_SIZE: 4,            // Limits hand size
+    MAX_FIELD_SIZE: 6,           // Limits field size
+    INITIAL_DECK_SIZE: 48,       // Starting deck
+    TURN_TIME_LIMIT_MS: 12000,   // 12 seconds per turn
+    MANDATORY_ATTACK_TURN: 3,    // Must attack by turn 3
+    UNIQUE_TYPES_TO_WIN: 6,      // Victory condition 1
+    ESSENCES_TO_WIN: 6,          // Victory condition 2
+};
+```
+
+<Warning>
+The mandatory attack rule on turn 3 prevents pure defensive strategies. You must engage in combat, which opens paths for both victory conditions.
+</Warning>
+
+## Victory Triggers
+
+The game continuously checks for victory conditions:
+
+- **After each draw**: Check if player has all 6 unique types
+- **After each combat**: Check if player has reached 6 essences
+- **After each turn**: Validate victory conditions
+
+The first player to meet either condition wins immediately.
+
+## Advanced Tips
+
+<Tabs>
+  <Tab title="Tempo Control">
+    Control the game pace based on your victory path:
+    
+    - **Leading in types?** Slow down, play defensively
+    - **Leading in essences?** Speed up, force combat
+    - **Behind in both?** Disrupt opponent's strategy
+  </Tab>
+  <Tab title="Opponent Denial">
+    Recognize your opponent's path and counter it:
+    
+    - If they're close to 6 types: Force them to lose card diversity
+    - If they're close to 6 essences: Play defensively, avoid feeding them wins
+    - If they're threatening both: Focus on your own fastest path
+  </Tab>
+  <Tab title="Resource Management">
+    Balance deck, hand, and field:
+    
+    - **Deck**: Contains all types eventually
+    - **Hand**: Limited to 4 cards
+    - **Field**: Limited to 6 spaces
+    - **Graveyard**: Recycles back to deck
+    
+    Manage these zones to maximize your victory chances.
+  </Tab>
+</Tabs>
+
+## Related Topics
+
+- [Card Types](/game-mechanics/card-types) - Understanding the 6 types required for type victory
+- [Combat System](/game-mechanics/combat-system) - Win combats to earn essences
+- [Fusion](/game-mechanics/fusion) - Create powerful cards for combat dominance

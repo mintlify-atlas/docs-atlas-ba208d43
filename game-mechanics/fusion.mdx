@@ -1,0 +1,315 @@
+---
+title: 'Fusion'
+description: 'Master the fusion system to combine cards and create powerful higher-level cards'
+---
+
+## Overview
+
+Fusion is the mechanic that allows you to combine two cards of the same type and level to create a single, more powerful card of the next level. This is essential for building board advantage and creating cards strong enough to overcome type disadvantages in combat.
+
+## Fusion Requirements
+
+To successfully fuse two cards, they must meet the following criteria:
+
+<CardGroup cols={2}>
+  <Card title="Same Type" icon="check">
+    Both cards must be of the same elemental type (Fire, Water, Plant, Light, Shadow, or Spirit).
+  </Card>
+  <Card title="Same Level" icon="equals">
+    Both cards must be the exact same level (1+1, or 2+2).
+  </Card>
+  <Card title="Below Max Level" icon="arrow-up">
+    Level 3 cards cannot be fused further - they are already at maximum power.
+  </Card>
+  <Card title="Valid Position" icon="location-dot">
+    Cards must be in valid positions (both on field, or one in hand + one on field).
+  </Card>
+</CardGroup>
+
+## Fusion Types
+
+There are two ways to perform fusion in Elemental Battlecards:
+
+### 1. Field Fusion (Card to Card)
+
+Combine two cards that are both on your field:
+
+```javascript
+// From Frontend/src/game_objects/player.js
+
+/**
+ * Fuses two cards on the field.
+ * @param {number} draggedIndex - The index of the dragged card.
+ * @param {number} targetIndex - The index of the target card.
+ * @returns {{newCard: object, emptiedIndex: number}|null}
+ */
+fuseCards(draggedIndex, targetIndex) {
+    const card1 = this.field[draggedIndex];
+    const card2 = this.field[targetIndex];
+
+    // Validate both slots have cards
+    if (!card1 || !card2) {
+        return null;
+    }
+
+    // Validate compatibility
+    if (card1.type !== card2.type || card1.level !== card2.level) {
+        return null;
+    }
+
+    // Prevent fusing max level cards
+    if (card1.level >= 3) {
+        return null;
+    }
+
+    // Create the new fused card
+    const newLevel = card1.level + 1;
+    const newCardId = `${card1.type}-${newLevel}`;
+    const newCardData = CardDefinitions[newCardId];
+    const newCardInstance = { ...newCardData, instanceId: Phaser.Math.RND.uuid() };
+
+    // Update field: new card at target, dragged slot becomes empty
+    this.field[targetIndex] = newCardInstance;
+    this.field[draggedIndex] = null;
+
+    return { newCard: newCardInstance, emptiedIndex: draggedIndex };
+}
+```
+
+**How it works:**
+- Drag one card onto another card of the same type and level
+- The new fused card appears in the target slot
+- The dragged slot becomes empty
+- Original cards are consumed in the fusion
+
+### 2. Hand-to-Field Fusion
+
+Combine a card from your hand with a card on your field:
+
+```javascript
+/**
+ * Fuses a card from hand with a card on the field.
+ * @param {string} instanceId - The instanceId of the card in hand.
+ * @param {number} targetIndex - The field index of the target card.
+ * @returns {object|null} The new fused card data or null.
+ */
+fuseFromHand(instanceId, targetIndex) {
+    const cardFromHandIndex = this.hand.findIndex(c => c.instanceId === instanceId);
+    const cardOnField = this.field[targetIndex];
+
+    if (cardFromHandIndex === -1 || !cardOnField) return null;
+
+    const cardFromHand = this.hand[cardFromHandIndex];
+
+    // Validate compatibility
+    if (cardFromHand.type !== cardOnField.type || 
+        cardFromHand.level !== cardOnField.level) {
+        return null;
+    }
+
+    // Remove card from hand
+    this.hand.splice(cardFromHandIndex, 1);
+
+    // Find the fusion result
+    const newLevel = cardOnField.level + 1;
+    const newCardId = `${cardOnField.type}-${newLevel}`;
+    const newCardData = CardDefinitions[newCardId];
+
+    // Original field card goes to graveyard
+    this.addCardDataToGraveyard(cardOnField);
+
+    const newCardInstance = { ...newCardData, instanceId: Phaser.Math.RND.uuid() };
+
+    // Replace field card with fused result
+    this.field[targetIndex] = newCardInstance;
+
+    return newCardInstance;
+}
+```
+
+**How it works:**
+- Drag a card from your hand onto a compatible field card
+- The new fused card replaces the field card
+- Both original cards are consumed
+- The field card goes to graveyard before being replaced
+
+<Warning>
+In hand-to-field fusion, the original field card is sent to the graveyard and decomposed into base Level 1 cards before the fusion completes.
+</Warning>
+
+## Fusion Outcomes
+
+Fusion creates progressively more powerful cards:
+
+<Tabs>
+  <Tab title="Level 1 → Level 2">
+    Combine two Level 1 cards to create one Level 2 card:
+    
+    ```
+    fuego-1 + fuego-1 → fuego-2
+    agua-1 + agua-1 → agua-2
+    planta-1 + planta-1 → planta-2
+    ```
+    
+    **Result:** A Level 2 card with +1 level advantage in combat.
+  </Tab>
+  <Tab title="Level 2 → Level 3">
+    Combine two Level 2 cards to create one Level 3 card:
+    
+    ```
+    fuego-2 + fuego-2 → fuego-3
+    luz-2 + luz-2 → luz-3
+    sombra-2 + sombra-2 → sombra-3
+    ```
+    
+    **Result:** A Level 3 card with +2 level advantage in combat.
+    
+    <Note>
+    Level 3 is the maximum. These cards cannot be fused further.
+    </Note>
+  </Tab>
+  <Tab title="Invalid Fusions">
+    These fusion attempts will fail:
+    
+    ```
+    fuego-1 + agua-1 ✗ (different types)
+    fuego-1 + fuego-2 ✗ (different levels)
+    fuego-3 + fuego-3 ✗ (already max level)
+    ```
+  </Tab>
+</Tabs>
+
+## Strategic Fusion Guide
+
+### When to Fuse
+
+<CardGroup cols={2}>
+  <Card title="Offensive Fusion" icon="fire">
+    Create Level 3 cards to guarantee victory against Level 1 cards, regardless of type advantage (2+ level difference auto-wins).
+  </Card>
+  <Card title="Defensive Fusion" icon="shield">
+    Fuse to create Level 2 cards that can neutralize enemy type advantages through the +1 level difference mechanic.
+  </Card>
+  <Card title="Board Management" icon="chess-board">
+    Free up field space by fusing two cards into one, allowing you to play more cards from your hand.
+  </Card>
+  <Card title="Resource Building" icon="layer-group">
+    Stockpile higher-level cards for critical turns, especially before the mandatory attack turn.
+  </Card>
+</CardGroup>
+
+### When NOT to Fuse
+
+<Warning>
+Avoid these common fusion mistakes:
+</Warning>
+
+- **Don't fuse prematurely**: Keep multiple low-level cards to maintain field presence and flexibility
+- **Don't over-commit**: Creating a Level 3 card means losing 4 Level 1 cards if it's destroyed
+- **Don't fuse without purpose**: Consider your opponent's board state before fusing
+- **Don't ignore type diversity**: Sometimes it's better to keep different types than to fuse for levels
+
+## Graveyard Mechanics
+
+When high-level cards are destroyed, they decompose:
+
+```javascript
+// From Frontend/src/game_objects/player.js
+
+addCardDataToGraveyard(cardData) {
+    const baseCardsCount = Math.pow(2, cardData.level - 1);
+    // Level 1: 2^0 = 1 card
+    // Level 2: 2^1 = 2 cards
+    // Level 3: 2^2 = 4 cards
+
+    for (let i = 0; i < baseCardsCount; i++) {
+        const baseCardId = `${cardData.type}-1`;
+        this.graveyard.push({ id: baseCardId, type: cardData.type, level: 1 });
+    }
+}
+```
+
+<CardGroup cols={3}>
+  <Card title="Level 1 Card">
+    Returns as **1** Level 1 card to graveyard
+  </Card>
+  <Card title="Level 2 Card">
+    Decomposes into **2** Level 1 cards in graveyard
+  </Card>
+  <Card title="Level 3 Card">
+    Decomposes into **4** Level 1 cards in graveyard
+  </Card>
+</CardGroup>
+
+<Note>
+When your deck runs out, the graveyard is shuffled back into your deck, giving you more cards to draw.
+</Note>
+
+## Fusion Examples
+
+### Example 1: Basic Field Fusion
+
+```
+Field State:
+  Slot 0: fuego-1
+  Slot 1: fuego-1
+  Slot 2: empty
+
+Action: Drag Slot 0 onto Slot 1
+
+Result:
+  Slot 0: empty
+  Slot 1: fuego-2
+  Slot 2: empty
+```
+
+### Example 2: Hand-to-Field Fusion
+
+```
+Hand: [agua-2, planta-1, luz-1]
+Field Slot 3: agua-2
+
+Action: Drag agua-2 from hand onto Field Slot 3
+
+Result:
+  Hand: [planta-1, luz-1]
+  Field Slot 3: agua-3
+  Graveyard: +2 agua-1 cards (from decomposed field card)
+```
+
+### Example 3: Failed Fusion
+
+```
+Field State:
+  Slot 0: fuego-2
+  Slot 1: agua-2
+
+Action: Drag Slot 0 onto Slot 1
+
+Result: Failed - different types
+  Field unchanged
+```
+
+## Game Configuration
+
+Fusion is balanced by field and hand size limits:
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const GAME_CONFIG = {
+    MAX_HAND_SIZE: 4,      // Maximum cards in hand
+    MAX_FIELD_SIZE: 6,     // Maximum cards on field
+    INITIAL_DECK_SIZE: 48, // Starting deck size
+};
+```
+
+- **Hand limit**: 4 cards maximum encourages fusion to make room
+- **Field limit**: 6 slots creates strategic positioning decisions
+- **Large deck**: 48 cards ensures plenty of fusion opportunities
+
+## Related Topics
+
+- [Card Types](/game-mechanics/card-types) - Understanding card type compatibility
+- [Combat System](/game-mechanics/combat-system) - How level advantages affect combat
+- [Winning Conditions](/game-mechanics/winning-conditions) - Fusion supports essence collection

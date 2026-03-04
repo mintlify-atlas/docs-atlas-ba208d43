@@ -1,0 +1,160 @@
+---
+title: 'Card Types'
+description: 'Learn about the six elemental card types and the type advantage system in Elemental Battlecards'
+---
+
+## Overview
+
+Elemental Battlecards features six distinct card types, each representing a different elemental force. Understanding the type advantage system is crucial for winning battles.
+
+## The Six Card Types
+
+<CardGroup cols={3}>
+  <Card title="Fire (Fuego)" icon="fire">
+    Fire cards burn through Plant defenses with devastating effectiveness.
+  </Card>
+  <Card title="Water (Agua)" icon="droplet">
+    Water cards extinguish Fire and overwhelm with fluid power.
+  </Card>
+  <Card title="Plant (Planta)" icon="leaf">
+    Plant cards absorb Water and grow stronger from its energy.
+  </Card>
+  <Card title="Light (Luz)" icon="sun">
+    Light cards pierce through Shadow with radiant force.
+  </Card>
+  <Card title="Shadow (Sombra)" icon="moon">
+    Shadow cards consume Spirit energy and grow from darkness.
+  </Card>
+  <Card title="Spirit (Espíritu)" icon="sparkles">
+    Spirit cards cleanse Light and restore balance.
+  </Card>
+</CardGroup>
+
+## Type Advantage System
+
+The type advantage system forms a circular hierarchy where each type is strong against one type and weak against another.
+
+### Physical Elements Cycle
+
+```
+Fire → Plant → Water → Fire
+```
+
+- **Fire** beats **Plant**
+- **Plant** beats **Water**
+- **Water** beats **Fire**
+
+### Mystical Elements Cycle
+
+```
+Light → Shadow → Spirit → Light
+```
+
+- **Light** beats **Shadow**
+- **Shadow** beats **Spirit**
+- **Spirit** beats **Light**
+
+<Note>
+The two cycles are independent - physical elements don't have type advantages against mystical elements and vice versa.
+</Note>
+
+## Implementation
+
+The type system is defined in the game constants:
+
+```javascript
+// From Frontend/src/helpers/constants.js
+
+export const CARD_TYPES = {
+    FUEGO: 'fuego',      // Fire
+    AGUA: 'agua',        // Water
+    PLANTA: 'planta',    // Plant
+    LUZ: 'luz',          // Light
+    SOMBRA: 'sombra',    // Shadow
+    ESPIRITU: 'espiritu' // Spirit
+};
+
+export const ADVANTAGES = {
+    [CARD_TYPES.FUEGO]: CARD_TYPES.PLANTA,      // Fire beats Plant
+    [CARD_TYPES.PLANTA]: CARD_TYPES.AGUA,       // Plant beats Water
+    [CARD_TYPES.AGUA]: CARD_TYPES.FUEGO,        // Water beats Fire
+    [CARD_TYPES.LUZ]: CARD_TYPES.SOMBRA,        // Light beats Shadow
+    [CARD_TYPES.SOMBRA]: CARD_TYPES.ESPIRITU,   // Shadow beats Spirit
+    [CARD_TYPES.ESPIRITU]: CARD_TYPES.LUZ       // Spirit beats Light
+};
+```
+
+## Card Levels
+
+Each card type exists in three levels:
+
+<Tabs>
+  <Tab title="Level 1">
+    Base cards with standard power. These are the foundation of your deck.
+    
+    **Examples:**
+    - `fuego-1`
+    - `agua-1`
+    - `planta-1`
+    - `luz-1`
+    - `sombra-1`
+    - `espiritu-1`
+  </Tab>
+  <Tab title="Level 2">
+    Enhanced cards created by fusing two Level 1 cards of the same type.
+    
+    **Examples:**
+    - `fuego-2`
+    - `agua-2`
+    - `planta-2`
+    - `luz-2`
+    - `sombra-2`
+    - `espiritu-2`
+  </Tab>
+  <Tab title="Level 3">
+    Maximum power cards created by fusing two Level 2 cards of the same type.
+    
+    **Examples:**
+    - `fuego-3`
+    - `agua-3`
+    - `planta-3`
+    - `luz-3`
+    - `sombra-3`
+    - `espiritu-3`
+  </Tab>
+</Tabs>
+
+## Card Structure
+
+Every card in the game follows this structure:
+
+```javascript
+// From Frontend/src/game_objects/card-definitions.js
+
+'fuego-1': {
+    id: 'fuego-1',
+    type: CardTypes.FUEGO,
+    level: 1,
+},
+'fuego-2': {
+    id: 'fuego-2',
+    type: CardTypes.FUEGO,
+    level: 2,
+},
+'fuego-3': {
+    id: 'fuego-3',
+    type: CardTypes.FUEGO,
+    level: 3,
+}
+```
+
+<Warning>
+Level 3 cards cannot be fused further. Attempting to fuse a Level 3 card will fail.
+</Warning>
+
+## Strategic Considerations
+
+- **Type matching** is essential when both cards are the same level
+- **Level advantage** can overcome type disadvantages (see [Combat System](/game-mechanics/combat-system))
+- **Fusion** allows you to create higher-level cards for greater power (see [Fusion](/game-mechanics/fusion))
+- Collecting all 6 unique types is one of the [winning conditions](/game-mechanics/winning-conditions)

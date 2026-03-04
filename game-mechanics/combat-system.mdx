@@ -1,0 +1,230 @@
+---
+title: 'Combat System'
+description: 'Understand how battles are resolved between cards using level differences and type advantages'
+---
+
+## Overview
+
+Combat in Elemental Battlecards is determined by a sophisticated system that considers both **card levels** and **type advantages**. The combat resolution follows specific rules to determine the winner, loser, or if the battle results in a draw.
+
+## Combat Resolution Rules
+
+The `resolveCombat` function processes battles in the following priority order:
+
+### Rule 1: Level Difference of 2 or More
+
+<Note>
+A card that is 2 or more levels higher **always wins**, regardless of type advantages.
+</Note>
+
+- **Level 3 vs Level 1**: Attacker wins automatically
+- **Level 1 vs Level 3**: Defender wins automatically
+
+```javascript
+// From Frontend/src/helpers/combat.js
+
+if (levelDiff >= 2) {
+    return { winner: 'attacker', loser: 'defender' };
+}
+if (levelDiff <= -2) {
+    return { winner: 'defender', loser: 'attacker' };
+}
+```
+
+### Rule 2: Level Difference of 1
+
+When cards differ by exactly one level, the higher-level card has an advantage, but type matchups can neutralize this:
+
+<Tabs>
+  <Tab title="Attacker +1 Level">
+    **Attacker is one level higher:**
+    
+    - If defender has type advantage → **Draw** (neutralized)
+    - If defender has no type advantage → **Attacker wins**
+    
+    ```javascript
+    if (levelDiff === 1) {
+        // Defender had type advantage - now neutralized
+        if (defenderAdvantage === attacker.type) {
+            return { winner: 'none', loser: 'none' }; // Draw
+        }
+        // No defender type advantage - attacker wins
+        return { winner: 'attacker', loser: 'defender' };
+    }
+    ```
+  </Tab>
+  <Tab title="Defender +1 Level">
+    **Defender is one level higher:**
+    
+    - If attacker has type advantage → **Draw** (neutralized)
+    - If attacker has no type advantage → **Defender wins**
+    
+    ```javascript
+    if (levelDiff === -1) {
+        // Attacker had type advantage - now neutralized
+        if (attackerAdvantage === defender.type) {
+            return { winner: 'none', loser: 'none' }; // Draw
+        }
+        // No attacker type advantage - defender wins
+        return { winner: 'defender', loser: 'attacker' };
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Rule 3: Same Level
+
+When both cards are the same level, type advantage determines the outcome:
+
+```javascript
+// Same level - type advantage decides
+if (attackerAdvantage === defender.type) {
+    return { winner: 'attacker', loser: 'defender' };
+}
+if (defenderAdvantage === attacker.type) {
+    return { winner: 'defender', loser: 'attacker' };
+}
+
+// No type advantage - it's a draw
+return { winner: 'none', loser: 'none' };
+```
+
+<CardGroup cols={2}>
+  <Card title="Type Advantage Wins" icon="trophy">
+    Fire vs Plant → Fire wins
+    
+    Water vs Fire → Water wins
+    
+    Light vs Shadow → Light wins
+  </Card>
+  <Card title="Neutral Matchup Draws" icon="handshake">
+    Fire vs Water → Draw
+    
+    Light vs Spirit → Draw
+    
+    Shadow vs Fire → Draw
+  </Card>
+</CardGroup>
+
+## Combat Function Signature
+
+The combat resolver accepts two card objects and returns the result:
+
+```javascript
+/**
+ * Determines the result of combat between two cards.
+ * @param {object} attacker - The attacking card.
+ * @param {string} attacker.type - The card type (e.g., 'fuego').
+ * @param {number} attacker.level - The card level (1, 2, or 3).
+ * @param {object} defender - The defending card.
+ * @param {string} defender.type - The card type.
+ * @param {number} defender.level - The card level.
+ * @returns {object} Result with winner/loser. e.g., { winner: 'attacker', loser: 'defender' }
+ */
+export function resolveCombat(attacker, defender)
+```
+
+## Combat Outcomes
+
+There are three possible outcomes from any combat:
+
+### Attacker Victory
+
+```javascript
+{ winner: 'attacker', loser: 'defender' }
+```
+
+- Attacker card remains on the field
+- Defender card is destroyed and sent to graveyard
+
+### Defender Victory
+
+```javascript
+{ winner: 'defender', loser: 'attacker' }
+```
+
+- Defender card remains on the field
+- Attacker card is destroyed and sent to graveyard
+
+### Draw (Neutral)
+
+```javascript
+{ winner: 'none', loser: 'none' }
+```
+
+- Both cards remain on the field
+- No cards are destroyed
+
+<Warning>
+When a card is destroyed in combat, it's sent to the graveyard and decomposed into base Level 1 cards. A Level 2 card becomes 2 Level 1 cards, and a Level 3 card becomes 4 Level 1 cards.
+</Warning>
+
+## Combat Examples
+
+### Example 1: Pure Level Advantage
+
+```
+Attacker: Fire Level 3
+Defender: Water Level 1
+
+Level Difference: +2
+Result: Attacker wins (level difference ≥2)
+```
+
+Even though Water has type advantage over Fire, the 2-level difference guarantees victory.
+
+### Example 2: Level Neutralizes Type
+
+```
+Attacker: Fire Level 2
+Defender: Water Level 1
+
+Level Difference: +1
+Defender Type Advantage: Water beats Fire
+Result: Draw (type advantage neutralized by level)
+```
+
+### Example 3: Same Level, Type Decides
+
+```
+Attacker: Fire Level 2
+Defender: Plant Level 2
+
+Level Difference: 0
+Attacker Type Advantage: Fire beats Plant
+Result: Attacker wins
+```
+
+### Example 4: Same Level, Neutral Matchup
+
+```
+Attacker: Fire Level 2
+Defender: Shadow Level 2
+
+Level Difference: 0
+No Type Advantage: Fire and Shadow are from different cycles
+Result: Draw
+```
+
+## Strategic Tips
+
+<CardGroup cols={2}>
+  <Card title="Build Higher Levels" icon="arrow-up">
+    Fuse cards to create Level 2 and 3 cards for stronger attacks that can overcome type disadvantages.
+  </Card>
+  <Card title="Know Your Matchups" icon="brain">
+    Memorize the type advantage cycles to predict combat outcomes when levels are equal.
+  </Card>
+  <Card title="Protect High-Level Cards" icon="shield">
+    Losing a Level 3 card means 4 Level 1 cards go to your graveyard - position them carefully.
+  </Card>
+  <Card title="Force Draws Strategically" icon="chess-knight">
+    Use level advantages to neutralize enemy type advantages and create favorable positions.
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+- [Card Types](/game-mechanics/card-types) - Learn about type advantages
+- [Fusion](/game-mechanics/fusion) - Create higher-level cards
+- [Winning Conditions](/game-mechanics/winning-conditions) - Combat supports essence collection

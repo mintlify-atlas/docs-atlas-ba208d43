@@ -1,0 +1,119 @@
+---
+title: 'Combat Resolution'
+description: 'Resolve battles between cards using type advantages and level differences'
+---
+
+## resolveCombat
+
+Determines the outcome of a battle between two cards based on their types and levels. The combat system follows a rock-paper-scissors pattern with type advantages, modified by level differences.
+
+### Combat Rules
+
+1. **Level Difference ≥ 2**: Automatic victory for the higher-level card
+2. **Level Difference = 1**: The higher-level card wins unless the lower-level card has type advantage, which neutralizes the combat
+3. **Same Level**: Type advantages determine the winner (see ADVANTAGES table)
+
+### Type Advantage Cycles
+
+There are two separate advantage cycles:
+- **Elemental Cycle**: Fuego → Planta → Agua → Fuego
+- **Spiritual Cycle**: Luz → Sombra → Espíritu → Luz
+
+<ParamField path="attacker" type="object" required>
+  The attacking card object
+  
+  <Expandable title="properties">
+    <ParamField path="type" type="string" required>
+      The card type: `'fuego'`, `'agua'`, `'planta'`, `'luz'`, `'sombra'`, or `'espiritu'`
+    </ParamField>
+    
+    <ParamField path="level" type="number" required>
+      The card level (1, 2, or 3)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="defender" type="object" required>
+  The defending card object
+  
+  <Expandable title="properties">
+    <ParamField path="type" type="string" required>
+      The card type: `'fuego'`, `'agua'`, `'planta'`, `'luz'`, `'sombra'`, or `'espiritu'`
+    </ParamField>
+    
+    <ParamField path="level" type="number" required>
+      The card level (1, 2, or 3)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="winner" type="string">
+  The combat winner: `'attacker'`, `'defender'`, or `'none'` for a draw
+</ResponseField>
+
+<ResponseField name="loser" type="string">
+  The combat loser: `'attacker'`, `'defender'`, or `'none'` for a draw
+</ResponseField>
+
+### Examples
+
+#### Automatic Victory (Level Difference ≥ 2)
+
+```javascript
+import { resolveCombat } from './helpers/combat';
+
+const attacker = { type: 'fuego', level: 3 };
+const defender = { type: 'agua', level: 1 };
+
+const result = resolveCombat(attacker, defender);
+// { winner: 'attacker', loser: 'defender' }
+// Level 3 beats Level 1 automatically, regardless of type disadvantage
+```
+
+#### Type Advantage at Same Level
+
+```javascript
+const attacker = { type: 'fuego', level: 2 };
+const defender = { type: 'planta', level: 2 };
+
+const result = resolveCombat(attacker, defender);
+// { winner: 'attacker', loser: 'defender' }
+// Fuego has advantage over Planta
+```
+
+#### Level +1 Neutralized by Type Advantage
+
+```javascript
+const attacker = { type: 'fuego', level: 2 };
+const defender = { type: 'agua', level: 1 };
+
+const result = resolveCombat(attacker, defender);
+// { winner: 'none', loser: 'none' }
+// Agua has type advantage over Fuego, which neutralizes the +1 level difference
+```
+
+#### Draw (No Type Advantage)
+
+```javascript
+const attacker = { type: 'fuego', level: 2 };
+const defender = { type: 'luz', level: 2 };
+
+const result = resolveCombat(attacker, defender);
+// { winner: 'none', loser: 'none' }
+// No advantage between elemental and spiritual cycles
+```
+
+### Combat Logic Flow
+
+1. Calculate level difference: `attacker.level - defender.level`
+2. If `levelDiff >= 2`: Attacker wins automatically
+3. If `levelDiff <= -2`: Defender wins automatically
+4. If `levelDiff === 1`: Attacker wins unless defender has type advantage (then draw)
+5. If `levelDiff === -1`: Defender wins unless attacker has type advantage (then draw)
+6. If `levelDiff === 0`: Type advantage determines winner, otherwise draw
+
+### Source
+
+`Frontend/src/helpers/combat.js:13-56`

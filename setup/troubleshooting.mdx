@@ -1,0 +1,499 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues and solutions for Elemental Battlecards setup and gameplay'
+---
+
+This guide covers common issues you may encounter when setting up or playing Elemental Battlecards, along with detailed solutions.
+
+## Connection Issues
+
+<Accordion title='Cannot Connect to Server'>
+  **Symptoms:**
+  - Frontend shows connection errors
+  - Room creation fails
+  - "Unable to connect" messages in browser console
+  
+  **Possible Causes:**
+  - Backend server is not running
+  - Backend running on wrong port
+  - Firewall blocking connections
+  - Incorrect IP address
+  - Network isolation (different subnets)
+  
+  **Solutions:**
+  
+  <Steps>
+    <Step title="Verify Backend is Running">
+      Check that the backend server is running:
+      
+      ```bash
+      curl http://localhost:3001/ping
+      ```
+      
+      Expected response:
+      ```json
+      {"ok":true,"time":1234567890,"host":"localhost"}
+      ```
+      
+      If this fails, start the backend:
+      ```bash
+      cd Backend
+      npm start
+      ```
+    </Step>
+    
+    <Step title="Check Port Configuration">
+      Verify the backend is running on port 3001:
+      
+      **Windows:**
+      ```powershell
+      netstat -ano | findstr :3001
+      ```
+      
+      **Linux/Mac:**
+      ```bash
+      lsof -i :3001
+      ```
+      
+      You should see a Node.js process listening on port 3001.
+    </Step>
+    
+    <Step title="Verify Network Connectivity">
+      From the guest computer, test connectivity to the host:
+      
+      ```bash
+      ping 192.168.1.100
+      curl http://192.168.1.100:3001/ping
+      ```
+      
+      If ping works but curl fails, it's a firewall issue.
+    </Step>
+    
+    <Step title="Configure Firewall">
+      **Windows Firewall:**
+      ```powershell
+      # Allow port 3001 (Backend)
+      netsh advfirewall firewall add rule name="Elemental Battlecards Backend" dir=in action=allow protocol=TCP localport=3001
+      
+      # Allow port 5173 (Frontend)
+      netsh advfirewall firewall add rule name="Elemental Battlecards Frontend" dir=in action=allow protocol=TCP localport=5173
+      ```
+      
+      **Linux (ufw):**
+      ```bash
+      sudo ufw allow 3001/tcp
+      sudo ufw allow 5173/tcp
+      sudo ufw reload
+      ```
+      
+      **Mac:**
+      ```bash
+      # Go to System Preferences > Security & Privacy > Firewall
+      # Click "Firewall Options"
+      # Add Node.js to allowed applications
+      ```
+    </Step>
+    
+    <Step title="Check Network Isolation">
+      Ensure both computers are on the same network:
+      
+      - Connected to same WiFi network
+      - Both on same subnet (e.g., 192.168.1.x)
+      - Not separated by VLANs
+      - Not using VPN on either machine
+      
+      <Warning>
+        Some public WiFi networks isolate devices from each other for security. Use a private home network for LAN play.
+      </Warning>
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title='Room Not Found'>
+  **Symptoms:**
+  - "Sala no encontrada" error message
+  - Unable to join room with 6-digit code
+  - Join attempt fails silently
+  
+  **Possible Causes:**
+  - Incorrect room code
+  - Room was deleted or expired
+  - Host closed browser
+  - Backend was restarted
+  
+  **Solutions:**
+  
+  <Steps>
+    <Step title="Verify Room Code">
+      Double-check the 6-digit code:
+      - No typos or transposed numbers
+      - Correct spacing (123 456, not 12 3456)
+      - Code is still valid
+    </Step>
+    
+    <Step title="Check Host Status">
+      Ensure the host player:
+      - Has not closed their browser tab
+      - Is still on the room creation screen
+      - Can see "Esperando jugador..." message
+    </Step>
+    
+    <Step title="Recreate Room">
+      If the room was lost:
+      1. Host clicks back to home screen
+      2. Host creates a new room
+      3. Host shares the new 6-digit code
+      4. Guest joins with new code
+    </Step>
+    
+    <Step title="Check Backend Logs">
+      Review backend console for errors:
+      ```bash
+      # Look for room creation messages
+      # Check for Socket.IO connection events
+      ```
+      
+      If backend was restarted, all rooms are lost (stored in memory).
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title='Room Full'>
+  **Symptoms:**
+  - "Sala llena" error message
+  - Cannot join existing room
+  
+  **Cause:**
+  Each room supports exactly 2 players. A third player cannot join.
+  
+  **Solution:**
+  - Host must create a new room for different players
+  - Current players must leave the room first
+  - Use different room codes for different pairs of players
+  
+  <Info>
+    This is by design. Elemental Battlecards is a 1v1 game, so each room is limited to 2 players.
+  </Info>
+</Accordion>
+
+## Synchronization Issues
+
+<Accordion title='Actions Not Syncing'>
+  **Symptoms:**
+  - Cards played on one client don't appear on the other
+  - Attacks or fusions don't register
+  - Delayed or missing game state updates
+  - Turn timer out of sync
+  
+  **Possible Causes:**
+  - Network latency or packet loss
+  - Socket.IO connection degraded
+  - Browser performance issues
+  
+  **Solutions:**
+  
+  <Steps>
+    <Step title="Check Network Stability">
+      Test network latency:
+      
+      ```bash
+      ping -t 192.168.1.100  # Windows
+      ping 192.168.1.100     # Linux/Mac
+      ```
+      
+      Look for:
+      - Consistent ping times (< 10ms on LAN)
+      - No packet loss
+      - No timeout errors
+      
+      <Warning>
+        If you see packet loss or latency > 100ms, check your WiFi signal strength or use Ethernet cables.
+      </Warning>
+    </Step>
+    
+    <Step title="Check Browser Console">
+      Open browser developer tools (F12) and check the Console tab:
+      
+      **Look for:**
+      - Socket.IO connection errors
+      - Failed event emissions
+      - JavaScript errors during game actions
+      
+      **Common messages:**
+      - `"Socket connected"` - Good
+      - `"Socket disconnected"` - Connection lost
+      - `"Error emitting event"` - Action failed
+    </Step>
+    
+    <Step title="Restart Connection">
+      1. Both players close the game tab
+      2. Host restarts backend (Ctrl+C, then `npm start`)
+      3. Host creates new room
+      4. Both players rejoin
+      
+      This clears any stuck socket connections.
+    </Step>
+    
+    <Step title="Check System Performance">
+      Ensure adequate system resources:
+      - Close unnecessary browser tabs
+      - Check CPU usage (Task Manager / Activity Monitor)
+      - Verify at least 2GB free RAM
+      - Disable browser extensions that may interfere
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title='Turn System Not Working'>
+  **Symptoms:**
+  - Both players can act simultaneously
+  - Turn timer not counting down
+  - "Tu turno" / "Turno del oponente" not displaying correctly
+  
+  **Cause:**
+  Game state synchronization issue
+  
+  **Solution:**
+  
+  <Steps>
+    <Step title="Verify Initial Sync">
+      When both players join:
+      - Host should see "Tu turno" immediately
+      - Guest should see "Turno del oponente"
+      - Timer should show 12 seconds
+    </Step>
+    
+    <Step title="Check Socket Events">
+      In browser console (F12), verify:
+      ```javascript
+      // Should see events like:
+      // turnStart
+      // turnEnd
+      // gameStateUpdate
+      ```
+    </Step>
+    
+    <Step title="Force State Refresh">
+      If turns are stuck:
+      1. Player whose turn it is should play a card
+      2. This triggers a state update
+      3. Turn should properly switch after action
+      
+      If this doesn't work, restart the match.
+    </Step>
+  </Steps>
+</Accordion>
+
+## Database Issues
+
+<Accordion title='Database Connection Failed'>
+  **Symptoms:**
+  - "No se pudo conectar a la BD" error
+  - Backend crashes on startup
+  - Authentication routes not working
+  
+  **For PostgreSQL Users:**
+  
+  <Steps>
+    <Step title="Verify PostgreSQL is Running">
+      **Windows:**
+      ```powershell
+      Get-Service postgresql*
+      ```
+      
+      **Linux:**
+      ```bash
+      sudo systemctl status postgresql
+      ```
+      
+      **Mac:**
+      ```bash
+      brew services list | grep postgresql
+      ```
+    </Step>
+    
+    <Step title="Check Connection Details">
+      Verify `.env` file:
+      ```env
+      DB_HOST=127.0.0.1
+      DB_PORT=5432
+      DB_NAME=elemental
+      DB_USER=postgres
+      DB_PASS=your_password
+      ```
+      
+      Test connection:
+      ```bash
+      psql -h 127.0.0.1 -p 5432 -U postgres -d elemental
+      ```
+    </Step>
+    
+    <Step title="Switch to SQLite">
+      For quick testing, use SQLite instead:
+      
+      ```env .env
+      DB_USE_SQLITE=true
+      DB_ENABLED=false
+      ```
+      
+      Restart the backend. SQLite requires no external database server.
+    </Step>
+  </Steps>
+  
+  **For SQLite Users:**
+  
+  No configuration needed! SQLite uses in-memory storage and requires no setup.
+  
+  <Info>
+    If you're experiencing database issues during LAN play, consider disabling authentication entirely with `DB_ENABLED=false`.
+  </Info>
+</Accordion>
+
+## Performance Issues
+
+<Accordion title='Game Running Slowly'>
+  **Symptoms:**
+  - Low frame rate
+  - Laggy card animations
+  - Delayed input response
+  
+  **Solutions:**
+  
+  <Steps>
+    <Step title="Check Browser Compatibility">
+      Recommended browsers:
+      - Chrome 90+
+      - Firefox 88+
+      - Edge 90+
+      - Safari 14+
+      
+      <Warning>
+        Avoid Internet Explorer - it does not support modern WebGL features required by Phaser.
+      </Warning>
+    </Step>
+    
+    <Step title="Enable Hardware Acceleration">
+      **Chrome/Edge:**
+      1. Go to `chrome://settings`
+      2. Search for "hardware acceleration"
+      3. Enable "Use hardware acceleration when available"
+      4. Restart browser
+    </Step>
+    
+    <Step title="Reduce Browser Load">
+      - Close unused tabs
+      - Disable resource-heavy extensions
+      - Clear browser cache
+      - Close other applications
+    </Step>
+    
+    <Step title="Check System Resources">
+      Minimum requirements:
+      - 4GB RAM
+      - Integrated graphics or better
+      - Dual-core CPU
+      
+      Monitor usage during gameplay:
+      - Task Manager (Windows)
+      - Activity Monitor (Mac)
+      - System Monitor (Linux)
+    </Step>
+  </Steps>
+</Accordion>
+
+## Port Conflicts
+
+<Accordion title='Port Already in Use'>
+  **Symptoms:**
+  - `Error: listen EADDRINUSE: address already in use :::3001`
+  - Backend fails to start
+  - Frontend dev server fails to start
+  
+  **Solution:**
+  
+  <Steps>
+    <Step title="Find Process Using Port">
+      **Windows:**
+      ```powershell
+      netstat -ano | findstr :3001
+      taskkill /PID <PID> /F
+      ```
+      
+      **Linux/Mac:**
+      ```bash
+      lsof -ti:3001 | xargs kill -9
+      ```
+    </Step>
+    
+    <Step title="Use Different Port">
+      Change port in `.env`:
+      ```env
+      PORT=3002
+      ```
+      
+      <Warning>
+        If you change the backend port, you must manually configure the frontend to use the new port via `?backend=http://localhost:3002` query parameter or `window.BACKEND_URL`.
+      </Warning>
+    </Step>
+  </Steps>
+</Accordion>
+
+## General Debugging
+
+<Accordion title='Enable Verbose Logging'>
+  To get more detailed error information:
+  
+  **Backend:**
+  ```env .env
+  NODE_ENV=development
+  ```
+  
+  **Frontend:**
+  Open browser console (F12) and check:
+  - Console tab for JavaScript errors
+  - Network tab for failed HTTP/WebSocket requests
+  - Application tab for storage issues
+</Accordion>
+
+<Accordion title='Clean Installation'>
+  If all else fails, perform a clean installation:
+  
+  <Steps>
+    <Step title="Backend">
+      ```bash
+      cd Backend
+      rm -rf node_modules package-lock.json
+      npm install
+      ```
+    </Step>
+    
+    <Step title="Frontend">
+      ```bash
+      cd Frontend
+      rm -rf node_modules package-lock.json dist
+      npm install
+      ```
+    </Step>
+    
+    <Step title="Clear Browser Data">
+      1. Open DevTools (F12)
+      2. Application tab > Clear storage
+      3. Clear all data
+      4. Hard refresh (Ctrl+Shift+R)
+    </Step>
+  </Steps>
+</Accordion>
+
+## Getting Help
+
+If you're still experiencing issues:
+
+1. **Check browser console (F12)** for error messages
+2. **Review backend logs** for connection or database errors
+3. **Test the health endpoint**: `curl http://localhost:3001/ping`
+4. **Verify both computers are on the same network** with `ping`
+5. **Check firewall rules** are properly configured
+
+<Info>
+  Most issues are related to network configuration or firewall settings. Double-check these first before investigating other causes.
+</Info>

@@ -1,0 +1,257 @@
+---
+title: 'LAN Setup Guide'
+description: 'Complete guide to setting up and playing Elemental Battlecards over a local area network'
+---
+
+This guide will help you configure and play **Elemental Battlecards** on a local area network (LAN) with a friend.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- **Node.js** version 14 or higher installed on both computers
+- Both computers connected to the **same local network** (WiFi or Ethernet)
+- Ports **3001** (Backend) and **5173** (Frontend) available
+- Firewall configured to allow incoming connections on these ports
+
+## Host Server Configuration
+
+The host player needs to run both the backend and frontend servers.
+
+<Steps>
+  <Step title="Install Backend Dependencies">
+    Navigate to the Backend directory and install dependencies:
+    
+    ```bash
+    cd Backend
+    npm install
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Verify that the `Backend/.env` file exists with the correct configuration:
+    
+    ```env Backend/.env
+    PORT=3001
+    NODE_ENV=development
+    DB_DIALECT=sqlite
+    JWT_SECRET=your_jwt_secret_key_here
+    CORS_ORIGIN=*
+    ```
+    
+    <Info>
+      For LAN play, using SQLite with `DB_DIALECT=sqlite` is recommended for simplicity. You can also disable the database entirely by setting `DB_ENABLED=false`.
+    </Info>
+  </Step>
+
+  <Step title="Start the Backend Server">
+    Launch the backend server:
+    
+    ```bash
+    cd Backend
+    npm start
+    ```
+    
+    You should see:
+    ```
+    Servidor corriendo en http://0.0.0.0:3001 (escuchando todas las interfaces)
+    ```
+    
+    <Info>
+      The server binds to `0.0.0.0` which allows it to accept connections from other devices on the network.
+    </Info>
+  </Step>
+
+  <Step title="Get Your Local IP Address">
+    You need to find the host computer's local IP address.
+    
+    **On Windows (PowerShell):**
+    ```powershell
+    ipconfig
+    ```
+    
+    Look for the **"IPv4 Address"** line in your active network adapter:
+    ```
+    IPv4 Address. . . . . . . . . . . : 192.168.1.100
+    ```
+    
+    **On Linux/Mac:**
+    ```bash
+    ifconfig
+    # or
+    ip addr show
+    ```
+    
+    <Warning>
+      Write down this IP address (e.g., **`192.168.1.100`**). The guest player will need it to connect.
+    </Warning>
+  </Step>
+
+  <Step title="Configure Firewall Rules">
+    Ensure your firewall allows incoming connections on the required ports.
+    
+    **Windows Firewall Configuration:**
+    ```powershell
+    # Allow port 3001 (Backend)
+    netsh advfirewall firewall add rule name="Elemental Battlecards Backend" dir=in action=allow protocol=TCP localport=3001
+    
+    # Allow port 5173 (Frontend)
+    netsh advfirewall firewall add rule name="Elemental Battlecards Frontend" dir=in action=allow protocol=TCP localport=5173
+    ```
+    
+    **Linux (ufw):**
+    ```bash
+    sudo ufw allow 3001/tcp
+    sudo ufw allow 5173/tcp
+    ```
+  </Step>
+
+  <Step title="Start the Frontend Server">
+    Open a new terminal and start the frontend development server:
+    
+    ```bash
+    cd Frontend
+    npm install
+    npm run dev
+    ```
+    
+    The Vite dev server will display:
+    ```
+    Local:   http://localhost:5173
+    Network: http://192.168.1.100:5173
+    ```
+    
+    <Info>
+      The `--host` flag in the `dev` script (see `package.json`) enables network access.
+    </Info>
+  </Step>
+</Steps>
+
+## Connecting Players
+
+### Player 1 (Host)
+
+<Steps>
+  <Step title="Open the Game">
+    Open your browser and navigate to `http://localhost:5173`
+  </Step>
+
+  <Step title="Login or Register">
+    Create an account or login with existing credentials
+  </Step>
+
+  <Step title="Create a Room">
+    From the main menu, select **"Juego en Red (LAN)"** (Network Game)
+    
+    Click **"Crear Sala"** (Create Room)
+  </Step>
+
+  <Step title="Share Room Code">
+    A 6-digit code will be generated (e.g., **123 456**)
+    
+    Share this code with Player 2
+    
+    <Info>
+      Wait for the second player to join. The game will start automatically when both players are connected.
+    </Info>
+  </Step>
+</Steps>
+
+### Player 2 (Guest)
+
+<Steps>
+  <Step title="Connect to Host">
+    Open your browser and navigate to `http://[HOST_IP]:5173`
+    
+    Example: `http://192.168.1.100:5173`
+    
+    <Warning>
+      Replace `[HOST_IP]` with the IP address you got from the host player.
+    </Warning>
+  </Step>
+
+  <Step title="Login or Register">
+    Create an account or login with existing credentials
+  </Step>
+
+  <Step title="Join Room">
+    From the main menu, select **"Juego en Red (LAN)"** (Network Game)
+    
+    In the right panel, enter the **6-digit code** shared by the host
+    
+    Click **"Unirse a Sala"** (Join Room)
+  </Step>
+
+  <Step title="Start Playing">
+    The game will start automatically once connected
+  </Step>
+</Steps>
+
+## Game Turn System
+
+- The **host player** always goes first
+- Turns alternate automatically between players
+- Each player has **12 seconds** per turn
+- All actions are synchronized in real-time via Socket.IO
+
+## Game States
+
+| State | Description |
+|-------|-------------|
+| **Esperando jugador...** | Room has only 1 player |
+| **Jugador conectado!** | Both players are in the room |
+| **Tu turno** | It's your turn to play |
+| **Turno del oponente** | Wait for opponent to finish their turn |
+
+## Game Controls
+
+- **Left click:** Select card
+- **Drag card from hand to slot:** Play card
+- **Click field card + click enemy card:** Attack
+- **Click two own field cards:** Fuse (same type and level)
+
+## Important Notes
+
+<Warning>
+  - **Do not close the browser tab** during the match
+  - If a player disconnects, the match will end
+  - Matches are only saved while players are connected
+  - Each room has a unique 6-digit code
+</Warning>
+
+## Quick Start (Development)
+
+For rapid development testing:
+
+**Terminal 1 (Backend):**
+```bash
+cd Backend
+npm run dev
+```
+
+**Terminal 2 (Frontend):**
+```bash
+cd Frontend
+npm run dev
+```
+
+## Health Check
+
+To verify the backend is running correctly, you can access the health check endpoint:
+
+```bash
+curl http://[HOST_IP]:3001/ping
+```
+
+Expected response:
+```json
+{
+  "ok": true,
+  "time": 1234567890,
+  "host": "hostname"
+}
+```
+
+<Info>
+  The `/ping` endpoint is defined in `server.js:52` and is useful for verifying network connectivity.
+</Info>

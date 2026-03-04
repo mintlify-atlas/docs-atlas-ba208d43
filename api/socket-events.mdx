@@ -1,0 +1,442 @@
+---
+title: 'Socket Events'
+description: 'Real-time multiplayer game communication using Socket.IO'
+---
+
+Elemental Battlecards uses Socket.IO for real-time bidirectional communication between players. The game uses a room-based system where players can create or join rooms using 6-digit codes.
+
+## Connection
+
+Connect to the Socket.IO server at the same host and port as the REST API (default: `http://localhost:3001`).
+
+```javascript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3001', {
+  transports: ['websocket', 'polling']
+});
+
+socket.on('connect', () => {
+  console.log('Connected:', socket.id);
+});
+```
+
+<Info>
+  The server accepts connections from any origin (`cors: { origin: '*' }`). Configure CORS appropriately for production environments.
+</Info>
+
+---
+
+## Client Events
+
+Events emitted by clients to the server.
+
+### create_room
+
+Creates a new game room and assigns the creator as the host with a unique 6-digit room code.
+
+```javascript
+socket.emit('create_room', (response) => {
+  console.log('Room created:', response.code);
+  console.log('Your role:', response.role); // 'host'
+});
+```
+
+#### Callback Response
+
+<ParamField body="success" type="boolean">
+  Always `true` for successful room creation.
+</ParamField>
+
+<ParamField body="code" type="string">
+  The 6-digit room code (e.g., "123456").
+</ParamField>
+
+<ParamField body="role" type="string">
+  Player's role in the room. Always `"host"` for the creator.
+</ParamField>
+
+<CodeGroup>
+```json Callback Response
+{
+  "success": true,
+  "code": "123456",
+  "role": "host"
+}
+```
+</CodeGroup>
+
+<Note>
+  The host starts with the first turn. The game state initializes with `currentTurn: 'host'` and `turnNumber: 0`.
+</Note>
+
+---
+
+### join_room
+
+Joins an existing game room using a 6-digit code. The player is assigned the "guest" role.
+
+```javascript
+socket.emit('join_room', { code: '123456' }, (response) => {
+  if (response.success) {
+    console.log('Joined room:', response.code);
+    console.log('Your role:', response.role); // 'guest'
+  } else {
+    console.error('Failed to join:', response.message);
+  }
+});
+```
+
+#### Parameters
+
+<ParamField body="code" type="string" required>
+  The 6-digit room code to join. Whitespace is automatically stripped.
+</ParamField>
+
+#### Callback Response
+
+<ParamField body="success" type="boolean">
+  `true` if successfully joined, `false` otherwise.
+</ParamField>
+
+<ParamField body="code" type="string">
+  The room code (only present on success).
+</ParamField>
+
+<ParamField body="role" type="string">
+  Player's role in the room. Always `"guest"` when joining (only present on success).
+</ParamField>
+
+<ParamField body="message" type="string">
+  Error message (only present on failure).
+</ParamField>
+
+<CodeGroup>
+```json Success Response
+{
+  "success": true,
+  "code": "123456",
+  "role": "guest"
+}
+```
+
+```json Room Not Found
+{
+  "success": false,
+  "message": "Sala no encontrada."
+}
+```
+
+```json Room Full
+{
+  "success": false,
+  "message": "Sala llena."
+}
+```
+</CodeGroup>
+
+<Warning>
+  Rooms can only hold 2 players maximum. Attempting to join a full room will result in an error.
+</Warning>
+
+---
+
+### game_event
+
+Generic event for sending game actions to the opponent. The server relays the event to all other players in the same room.
+
+```javascript
+socket.emit('game_event', {
+  type: 'card_played',
+  cardId: 42,
+  position: { x: 3, y: 2 },
+  timestamp: Date.now()
+});
+```
+
+#### Parameters
+
+The payload can contain any data structure. Common fields include:
+
+<ParamField body="type" type="string">
+  The type of game event (e.g., "card_played", "attack", "defense").
+</ParamField>
+
+<ParamField body="payload" type="object">
+  Event-specific data. Structure depends on the event type.
+</ParamField>
+
+<Info>
+  The server does not validate or modify the payload. It simply relays it to other players in the room. Implement validation in your game logic.
+</Info>
+
+---
+
+### end_turn
+
+Signals the end of the current player's turn and switches the active player.
+
+```javascript
+socket.emit('end_turn', {
+  // Optional: include turn summary data
+  actionsPerformed: 3,
+  cardsPlayed: 2
+});
+```
+
+#### Parameters
+
+<ParamField body="payload" type="object">
+  Optional data about the turn. Not used by the server but can be useful for logging.
+</ParamField>
+
+#### Behavior
+
+The server automatically:
+1. Alternates the `currentTurn` between "host" and "guest"
+2. Increments the `turnNumber` counter
+3. Broadcasts a `turn_changed` event to both players
+
+<Note>
+  Turn switching is automatic based on the sender's role. The host's turn ends → guest's turn begins, and vice versa.
+</Note>
+
+---
+
+## Server Events
+
+Events emitted by the server to clients.
+
+### room_created
+
+Emitted to the room when it's successfully created.
+
+```javascript
+socket.on('room_created', (data) => {
+  console.log('Room code:', data.code);
+});
+```
+
+#### Payload
+
+<ResponseField name="code" type="string">
+  The 6-digit room code.
+</ResponseField>
+
+<CodeGroup>
+```json Event Data
+{
+  "code": "123456"
+}
+```
+</CodeGroup>
+
+---
+
+### player_joined
+
+Emitted to all players in a room when a new player joins.
+
+```javascript
+socket.on('player_joined', (data) => {
+  console.log('Players in room:', data.players);
+  if (data.canStart) {
+    console.log('Game can start!');
+  }
+});
+```
+
+#### Payload
+
+<ResponseField name="players" type="number">
+  Current number of players in the room (1 or 2).
+</ResponseField>
+
+<ResponseField name="canStart" type="boolean">
+  `true` when the room has 2 players and the game can begin.
+</ResponseField>
+
+<CodeGroup>
+```json Event Data
+{
+  "players": 2,
+  "canStart": true
+}
+```
+</CodeGroup>
+
+---
+
+### game_start
+
+Emitted when the room reaches 2 players and the game begins. Both players receive this event simultaneously.
+
+```javascript
+socket.on('game_start', (data) => {
+  console.log('Game starting!');
+  console.log('Current turn:', data.currentTurn);
+  console.log('Host ID:', data.hostId);
+  console.log('Guest ID:', data.guestId);
+});
+```
+
+#### Payload
+
+<ResponseField name="currentTurn" type="string">
+  The role of the player whose turn it is. Always `"host"` at game start.
+</ResponseField>
+
+<ResponseField name="hostId" type="string">
+  The socket ID of the host player.
+</ResponseField>
+
+<ResponseField name="guestId" type="string">
+  The socket ID of the guest player.
+</ResponseField>
+
+<CodeGroup>
+```json Event Data
+{
+  "currentTurn": "host",
+  "hostId": "abc123xyz",
+  "guestId": "def456uvw"
+}
+```
+</CodeGroup>
+
+<Info>
+  Use the socket IDs to identify which player you are. Compare `socket.id` with `hostId` and `guestId` to determine your role.
+</Info>
+
+---
+
+### game_event
+
+Received when the opponent sends a game action.
+
+```javascript
+socket.on('game_event', (payload) => {
+  console.log('Opponent action:', payload.type);
+  // Handle the opponent's action
+  handleOpponentAction(payload);
+});
+```
+
+#### Payload
+
+The payload structure matches what the opponent sent. The server does not modify the data.
+
+<CodeGroup>
+```json Example Event
+{
+  "type": "card_played",
+  "cardId": 42,
+  "position": { "x": 3, "y": 2 },
+  "timestamp": 1709539200000
+}
+```
+</CodeGroup>
+
+<Note>
+  Events are only sent to other players in the room, not back to the sender.
+</Note>
+
+---
+
+### turn_changed
+
+Emitted to both players when a turn ends and the active player switches.
+
+```javascript
+socket.on('turn_changed', (data) => {
+  console.log('New turn:', data.turnNumber);
+  console.log('Active player:', data.currentTurn);
+  
+  const isMyTurn = (
+    (data.currentTurn === 'host' && myRole === 'host') ||
+    (data.currentTurn === 'guest' && myRole === 'guest')
+  );
+  
+  if (isMyTurn) {
+    console.log('Your turn!');
+  }
+});
+```
+
+#### Payload
+
+<ResponseField name="currentTurn" type="string">
+  The role of the player whose turn it now is ("host" or "guest").
+</ResponseField>
+
+<ResponseField name="turnNumber" type="number">
+  The current turn number. Increments with each turn change, starting from 0.
+</ResponseField>
+
+<CodeGroup>
+```json Event Data
+{
+  "currentTurn": "guest",
+  "turnNumber": 5
+}
+```
+</CodeGroup>
+
+---
+
+### player_left
+
+Emitted when a player disconnects from the room.
+
+```javascript
+socket.on('player_left', () => {
+  console.log('Opponent disconnected');
+  // Handle opponent disconnection (pause game, show message, etc.)
+});
+```
+
+<Warning>
+  If all players leave, the room is automatically deleted from the server. The room code becomes invalid and cannot be rejoined.
+</Warning>
+
+---
+
+## Room Lifecycle
+
+1. **Creation**: Host creates room → receives `room_created` event
+2. **Joining**: Guest joins → both players receive `player_joined` event
+3. **Game Start**: When 2 players present → both receive `game_start` event
+4. **Gameplay**: Players exchange `game_event` and `end_turn` events
+5. **Disconnection**: Player leaves → remaining player receives `player_left` event
+6. **Cleanup**: Last player leaves → room is deleted
+
+## Game State Structure
+
+The server maintains the following state for each room:
+
+```javascript
+{
+  players: [
+    { socketId: 'abc123', role: 'host' },
+    { socketId: 'def456', role: 'guest' }
+  ],
+  gameState: {
+    currentTurn: 'host',  // 'host' or 'guest'
+    turnNumber: 0         // Increments with each turn
+  },
+  createdAt: 1709539200000 // Timestamp
+}
+```
+
+<Info>
+  The server-side game state is minimal by design. Game logic, card state, and board state are managed client-side. The server only facilitates communication and turn management.
+</Info>
+
+## Implementation Reference
+
+Socket event handling is implemented in `Backend/socketManager.js`:
+- Room creation: `socketManager.js:15-37`
+- Joining rooms: `socketManager.js:39-78`
+- Game events: `socketManager.js:81-89`
+- Turn management: `socketManager.js:92-110`
+- Disconnection: `socketManager.js:112-124`

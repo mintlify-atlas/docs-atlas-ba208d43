@@ -1,0 +1,213 @@
+---
+title: Welcome to Elemental Battlecards
+description: A strategic multiplayer card game based on Set Theory with real-time LAN gameplay
+mode: custom
+---
+
+<div className="relative w-full overflow-hidden bg-gradient-to-br from-[#FF6B35] via-[#F77E50] to-[#C44D27] dark:from-[#C44D27] dark:via-[#A93E1F] dark:to-[#8B3318]">
+  <div className="absolute inset-0 bg-black/20 dark:bg-black/40"></div>
+  <div className="relative max-w-6xl mx-auto px-6 py-20 lg:py-24">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="lg:col-span-7 space-y-6">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white">
+          Elemental Battlecards
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 max-w-2xl">
+          A strategic multiplayer card game combining elemental combat, card fusion mechanics, and real-time LAN gameplay. Master six elemental types and build winning strategies.
+        </p>
+        <div className="flex flex-wrap gap-3 pt-2">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#FF6B35] font-semibold hover:bg-gray-50 transition-colors no-underline"
+          >
+            Get Started
+          </a>
+          <a
+            href="/game-mechanics/card-types"
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 bg-white/10 backdrop-blur text-white font-semibold hover:bg-white/20 transition-colors no-underline"
+          >
+            Learn Game Mechanics
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 flex justify-center">
+        <div className="relative w-full max-w-md">
+          <div className="aspect-square rounded-2xl bg-white/10 backdrop-blur border border-white/20 p-8 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="text-6xl">🎮</div>
+              <div className="text-white/90 font-semibold text-lg">Strategic Card Battles</div>
+              <div className="text-white/70 text-sm">6 Elements • Real-time Combat • Card Fusion</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-12">
+    <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
+      Quick start
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Get up and running with Elemental Battlecards in minutes
+    </p>
+  </div>
+
+  <Steps>
+    <Step title="Install dependencies">
+      Clone the repository and install dependencies for both backend and frontend:
+      
+      ```bash
+      git clone https://github.com/Jrangel42/elemental-battlecards.git
+      cd elemental-battlecards
+      ```
+
+      ```bash Backend
+      cd Backend
+      npm install
+      ```
+
+      ```bash Frontend
+      cd Frontend
+      npm install
+      ```
+    </Step>
+
+    <Step title="Configure the backend">
+      Create a `.env` file in the Backend directory based on `.env.example`:
+
+      ```env
+      PORT=3001
+      NODE_ENV=development
+      DB_DIALECT=sqlite
+      JWT_SECRET=your_jwt_secret_key_here
+      CORS_ORIGIN=*
+      ```
+
+      Start the backend server:
+
+      ```bash
+      cd Backend
+      npm start
+      ```
+
+      The server will listen on `http://0.0.0.0:3001`
+    </Step>
+
+    <Step title="Start the frontend">
+      In a new terminal, start the frontend development server:
+
+      ```bash
+      cd Frontend
+      npm run dev
+      ```
+
+      The game will be available at `http://localhost:5173`
+    </Step>
+
+    <Step title="Create or join a game">
+      Open the game in your browser, register or login, then:
+      
+      - **Host**: Click "Create Room" to generate a 6-digit code
+      - **Guest**: Enter the host's code and click "Join Room"
+      
+      The game starts automatically when both players are connected. The host always takes the first turn.
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-12">
+    <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
+      Explore by topic
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Learn about the game mechanics and features
+    </p>
+  </div>
+
+  <CardGroup cols={2}>
+    <Card title="Card Types" icon="fire" href="/game-mechanics/card-types">
+      Learn about the six elemental types: Fire, Water, Plant, Light, Shadow, and Spirit
+    </Card>
+    <Card title="Combat System" icon="swords" href="/game-mechanics/combat-system">
+      Master type advantages and level-based combat mechanics
+    </Card>
+    <Card title="Card Fusion" icon="wand-sparkles" href="/game-mechanics/fusion">
+      Combine cards of the same type and level to create powerful upgrades
+    </Card>
+    <Card title="Winning Conditions" icon="trophy" href="/game-mechanics/winning-conditions">
+      Understand the victory conditions and strategic objectives
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-12">
+    <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
+      Setup and configuration
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Configure your game for LAN play and development
+    </p>
+  </div>
+
+  <CardGroup cols={3}>
+    <Card title="LAN Setup" icon="network-wired" href="/setup/lan-setup">
+      Set up multiplayer games on your local network
+    </Card>
+    <Card title="Backend Config" icon="server" href="/setup/backend-configuration">
+      Configure database, authentication, and Socket.IO
+    </Card>
+    <Card title="Frontend Config" icon="desktop" href="/setup/frontend-configuration">
+      Configure Phaser, Vite, and game client settings
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="space-y-4 mb-12">
+    <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
+      Developer resources
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Technical documentation and API references
+    </p>
+  </div>
+
+  <CardGroup cols={2}>
+    <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+      Understand the frontend and backend architecture
+    </Card>
+    <Card title="Socket Events" icon="bolt" href="/development/socket-events">
+      Learn about real-time multiplayer communication
+    </Card>
+    <Card title="API Reference" icon="code" href="/api/authentication">
+      Complete API documentation for backend and game objects
+    </Card>
+    <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+      Contribute to the project and development workflow
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#FF6B35] to-[#C44D27] dark:from-[#C44D27] dark:to-[#8B3318] p-8 sm:p-12">
+    <div className="relative z-10 max-w-2xl">
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+        Ready to start playing?
+      </h2>
+      <p className="text-lg text-white/90 mb-6">
+        Follow the quickstart guide to set up your first multiplayer game in minutes.
+      </p>
+      <a
+        href="/quickstart"
+        className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-[#FF6B35] font-semibold hover:bg-gray-50 transition-colors no-underline"
+      >
+        Get Started Now
+      </a>
+    </div>
+  </div>
+</div>

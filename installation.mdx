@@ -1,0 +1,225 @@
+---
+title: Installation
+description: Complete guide to installing and setting up Elemental Battlecards on your local machine
+---
+
+## Prerequisites
+
+Before installing Elemental Battlecards, ensure you have the following installed on your system:
+
+- **Node.js** version 14 or higher
+- **npm** (comes with Node.js)
+- **Git** for cloning the repository
+- A modern web browser (Chrome, Firefox, or Edge recommended)
+
+<Note>
+For local LAN play, you can use SQLite instead of PostgreSQL. This allows you to skip database setup and get started quickly.
+</Note>
+
+## Cloning the Repository
+
+First, clone the Elemental Battlecards repository to your local machine:
+
+```bash
+git clone <repository-url>
+cd elemental-battlecards
+```
+
+The project structure includes two main directories:
+- `Backend/` - Node.js server with Express and Socket.io
+- `Frontend/` - Phaser-based game client with Vite
+
+## Backend Installation
+
+<Steps>
+  <Step title="Navigate to Backend Directory">
+    ```bash
+    cd Backend
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This will install the following key dependencies:
+    - `express` - Web server framework
+    - `socket.io` - Real-time bidirectional communication
+    - `sequelize` - ORM for database management
+    - `jsonwebtoken` - JWT authentication
+    - `bcryptjs` - Password hashing
+    - `cors` - Cross-origin resource sharing
+    - `dotenv` - Environment variable management
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the `Backend/` directory by copying the example file:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    <CodeGroup>
+    ```env PostgreSQL Configuration
+    PORT=3000
+    DB_HOST=127.0.0.1
+    DB_PORT=5432
+    DB_NAME=elemental
+    DB_USER=postgres
+    DB_PASS=postgres_password
+    JWT_SECRET=your_jwt_secret_key_here
+    ```
+
+    ```env SQLite Configuration (Recommended for Local Play)
+    PORT=3000
+    JWT_SECRET=your_jwt_secret_key_here
+    DB_USE_SQLITE=true
+    ```
+    </CodeGroup>
+
+    <Warning>
+    Make sure to change `JWT_SECRET` to a strong, random string. Never commit your `.env` file to version control.
+    </Warning>
+
+    <Info>
+    Using `DB_USE_SQLITE=true` enables an in-memory SQLite database, perfect for local testing without PostgreSQL setup. Note that data won't persist after server restart.
+    </Info>
+  </Step>
+</Steps>
+
+## Frontend Installation
+
+<Steps>
+  <Step title="Navigate to Frontend Directory">
+    Open a new terminal window and navigate to the frontend:
+
+    ```bash
+    cd Frontend
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Install all required npm packages:
+
+    ```bash
+    npm install
+    ```
+
+    This will install:
+    - `phaser` ^3.90.0 - Game framework
+    - `socket.io-client` ^4.7.2 - Client-side Socket.io
+    - `vite` ^5.4.21 - Fast development server and build tool
+  </Step>
+</Steps>
+
+## Database Setup (Optional)
+
+<Note>
+Skip this section if you're using SQLite (`DB_USE_SQLITE=true`) for local play.
+</Note>
+
+If you want to use PostgreSQL for persistent data storage:
+
+<Steps>
+  <Step title="Install PostgreSQL">
+    Download and install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/)
+  </Step>
+
+  <Step title="Create Database">
+    Connect to PostgreSQL and create a database:
+
+    ```sql
+    CREATE DATABASE elemental;
+    ```
+  </Step>
+
+  <Step title="Update Configuration">
+    Update your `Backend/.env` file with your PostgreSQL credentials:
+
+    ```env
+    DB_HOST=127.0.0.1
+    DB_PORT=5432
+    DB_NAME=elemental
+    DB_USER=your_postgres_user
+    DB_PASS=your_postgres_password
+    ```
+  </Step>
+
+  <Step title="Database Migrations">
+    The database tables will be created automatically when you start the backend server for the first time. Sequelize will handle the schema synchronization.
+  </Step>
+</Steps>
+
+## Network Configuration for LAN Play
+
+For playing over a local network, ensure the following:
+
+<Steps>
+  <Step title="Check Port Availability">
+    Verify that ports **3001** (Backend) and **5173** (Frontend) are available and not blocked by other applications.
+  </Step>
+
+  <Step title="Configure Firewall (Windows)">
+    If you're hosting on Windows, allow traffic through the firewall:
+
+    ```powershell
+    # Allow Backend port
+    netsh advfirewall firewall add rule name="Elemental Battlecards Backend" dir=in action=allow protocol=TCP localport=3001
+
+    # Allow Frontend port
+    netsh advfirewall firewall add rule name="Elemental Battlecards Frontend" dir=in action=allow protocol=TCP localport=5173
+    ```
+  </Step>
+
+  <Step title="Find Your Local IP">
+    You'll need your local IP address for other players to connect.
+
+    <CodeGroup>
+    ```powershell Windows
+    ipconfig
+    ```
+
+    ```bash Linux/Mac
+    ifconfig
+    # or
+    ip addr show
+    ```
+    </CodeGroup>
+
+    Look for the IPv4 address (e.g., `192.168.1.100`) on your active network adapter.
+  </Step>
+</Steps>
+
+## Verification
+
+Once installation is complete, verify your setup:
+
+<Steps>
+  <Step title="Check Node.js Version">
+    ```bash
+    node --version
+    ```
+    Should output v14.0.0 or higher
+  </Step>
+
+  <Step title="Verify Backend Dependencies">
+    ```bash
+    cd Backend
+    npm list --depth=0
+    ```
+  </Step>
+
+  <Step title="Verify Frontend Dependencies">
+    ```bash
+    cd Frontend
+    npm list --depth=0
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+Now that you have everything installed, proceed to the [Quickstart Guide](/quickstart) to launch your first game!

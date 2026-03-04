@@ -1,0 +1,227 @@
+---
+title: "Player"
+description: "Manages the complete state of a player, including their deck, hand, field, graveyard, and essences."
+---
+
+## Overview
+
+The `Player` class is the core game object that manages all aspects of a player's state in Elemental Battlecards. It handles card drawing, playing cards to the field, fusion mechanics, and graveyard management.
+
+## Constructor
+
+<ParamField path="id" type="string" required>
+  The player identifier ('player1' or 'player2')
+</ParamField>
+
+<ParamField path="scene" type="Phaser.Scene" required>
+  The main game scene
+</ParamField>
+
+```javascript
+const player = new Player('player1', scene);
+```
+
+## Properties
+
+<ResponseField name="id" type="string">
+  The player's unique identifier
+</ResponseField>
+
+<ResponseField name="scene" type="Phaser.Scene">
+  Reference to the main game scene
+</ResponseField>
+
+<ResponseField name="deck" type="Deck">
+  The player's deck instance
+</ResponseField>
+
+<ResponseField name="essences" type="EssenceManager">
+  Manages the player's elemental essences
+</ResponseField>
+
+<ResponseField name="hand" type="Card[]">
+  Array of cards currently in the player's hand
+</ResponseField>
+
+<ResponseField name="field" type="(Card|null)[]">
+  Array of 6 slots representing the battlefield. Each slot can contain a Card or be null
+</ResponseField>
+
+<ResponseField name="graveyard" type="object[]">
+  Array of card data objects (not sprites) that have been defeated
+</ResponseField>
+
+<ResponseField name="turnsWithoutAttacking" type="number">
+  Counter for turns where the player hasn't attacked
+</ResponseField>
+
+## Methods
+
+### drawInitialHand()
+
+Draws the initial hand of 4 cards at the start of the game.
+
+```javascript
+player.drawInitialHand();
+```
+
+### drawCard()
+
+Draws a card from the deck and adds it to the hand. If the deck is empty, refills it from the graveyard.
+
+<ResponseField name="return" type="object|null">
+  The card data object that was drawn, or null if no cards are available
+</ResponseField>
+
+```javascript
+const cardData = player.drawCard();
+if (cardData) {
+  console.log(`Drew card: ${cardData.id}`);
+  console.log(`Instance ID: ${cardData.instanceId}`);
+}
+```
+
+**Note:** Each card is assigned a unique `instanceId` using `Phaser.Math.RND.uuid()` when drawn, allowing it to be tracked throughout its lifecycle.
+
+### refillDeckFromGraveyard()
+
+Moves all cards from the graveyard back to the deck and shuffles it. Called automatically when the deck is empty.
+
+```javascript
+player.refillDeckFromGraveyard();
+```
+
+### playCardFromHand(instanceId, fieldIndex)
+
+Moves a card from the hand to a specific slot on the battlefield.
+
+<ParamField path="instanceId" type="string" required>
+  The unique instance ID of the card to play
+</ParamField>
+
+<ParamField path="fieldIndex" type="number" required>
+  The battlefield slot index (0-5)
+</ParamField>
+
+<ResponseField name="return" type="Card|null">
+  The card that was played, or null if the operation failed
+</ResponseField>
+
+```javascript
+const card = player.hand[0];
+const playedCard = player.playCardFromHand(card.instanceId, 2);
+if (playedCard) {
+  console.log(`Card played to slot 2`);
+}
+```
+
+### fuseCards(draggedIndex, targetIndex)
+
+Fuses two cards on the battlefield. Both cards must be of the same type and level, and the level must be less than 3.
+
+<ParamField path="draggedIndex" type="number" required>
+  The field index of the card being dragged
+</ParamField>
+
+<ParamField path="targetIndex" type="number" required>
+  The field index of the target card
+</ParamField>
+
+<ResponseField name="return" type="object|null">
+  An object containing:
+  - `newCard`: The fused card data with increased level
+  - `emptiedIndex`: The field slot that was emptied (draggedIndex)
+  
+  Returns null if fusion fails
+</ResponseField>
+
+```javascript
+const result = player.fuseCards(0, 1);
+if (result) {
+  console.log(`New card created: ${result.newCard.id} at level ${result.newCard.level}`);
+  console.log(`Slot ${result.emptiedIndex} is now empty`);
+}
+```
+
+**Fusion Rules:**
+- Both cards must have the same `type` and `level`
+- Cards cannot be level 3 (max level)
+- The new card occupies the target slot
+- The dragged slot becomes empty
+- A new `instanceId` is generated for the fused card
+
+### fuseFromHand(instanceId, targetIndex)
+
+Fuses a card from the hand with a card on the battlefield.
+
+<ParamField path="instanceId" type="string" required>
+  The instance ID of the card in the hand
+</ParamField>
+
+<ParamField path="targetIndex" type="number" required>
+  The field index of the target card
+</ParamField>
+
+<ResponseField name="return" type="object|null">
+  The new fused card data, or null if fusion fails
+</ResponseField>
+
+```javascript
+const handCard = player.hand[0];
+const fusedCard = player.fuseFromHand(handCard.instanceId, 3);
+if (fusedCard) {
+  console.log(`Fused to create: ${fusedCard.id}`);
+}
+```
+
+**Important:** The card on the field that was used for fusion is added to the graveyard before being replaced.
+
+### addCardDataToGraveyard(cardData)
+
+Adds a defeated card to the graveyard. Cards of level 2 or 3 are decomposed into their base level 1 components.
+
+<ParamField path="cardData" type="object" required>
+  The card data object to add to the graveyard
+</ParamField>
+
+```javascript
+const defeatedCard = { id: 'fuego-3', type: 'fuego', level: 3 };
+player.addCardDataToGraveyard(defeatedCard);
+// This adds 4 level-1 fire cards to the graveyard (2^(3-1) = 4)
+```
+
+**Decomposition Formula:** A card of level N decomposes into 2^(N-1) level-1 cards of the same type.
+- Level 1: 1 card (2^0)
+- Level 2: 2 cards (2^1)
+- Level 3: 4 cards (2^2)
+
+## Usage Example
+
+```javascript
+import Player from './player.js';
+
+// Initialize player in a Phaser scene
+class GameScene extends Phaser.Scene {
+  create() {
+    // Create players
+    this.player1 = new Player('player1', this);
+    this.player2 = new Player('player2', this);
+    
+    // Draw initial hands
+    this.player1.drawInitialHand();
+    this.player2.drawInitialHand();
+    
+    // Play a card
+    const firstCard = this.player1.hand[0];
+    this.player1.playCardFromHand(firstCard.instanceId, 0);
+    
+    // Fuse two cards on the field
+    this.player1.playCardFromHand(this.player1.hand[0].instanceId, 1);
+    const fusion = this.player1.fuseCards(0, 1);
+    
+    if (fusion) {
+      console.log(`Created ${fusion.newCard.id} in slot 1`);
+    }
+  }
+}
+```

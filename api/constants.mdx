@@ -1,0 +1,174 @@
+---
+title: 'Game Constants'
+description: 'Card types, type advantages, and game configuration constants'
+---
+
+## CARD_TYPES
+
+Defines all available card types in the game. There are six types organized into two cycles: elemental (Fuego, Agua, Planta) and spiritual (Luz, Sombra, Espíritu).
+
+### Values
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `FUEGO` | `'fuego'` | Fire element |
+| `AGUA` | `'agua'` | Water element |
+| `PLANTA` | `'planta'` | Plant element |
+| `LUZ` | `'luz'` | Light spiritual type |
+| `SOMBRA` | `'sombra'` | Shadow spiritual type |
+| `ESPIRITU` | `'espiritu'` | Spirit type |
+
+### Example
+
+```javascript
+import { CARD_TYPES } from './helpers/constants';
+
+const fireCard = {
+  type: CARD_TYPES.FUEGO,
+  level: 2
+};
+
+const waterCard = {
+  type: CARD_TYPES.AGUA,
+  level: 1
+};
+```
+
+---
+
+## ADVANTAGES
+
+Defines the type advantage map for combat resolution. Each card type has an advantage over exactly one other type, forming two separate rock-paper-scissors cycles.
+
+### Type Advantage Cycles
+
+**Elemental Cycle:**
+- Fuego beats Planta
+- Planta beats Agua
+- Agua beats Fuego
+
+**Spiritual Cycle:**
+- Luz beats Sombra
+- Sombra beats Espíritu
+- Espíritu beats Luz
+
+Cards from different cycles (elemental vs spiritual) have no advantage over each other.
+
+### Structure
+
+| Attacker Type | Advantage Against |
+|---------------|-------------------|
+| `fuego` | `planta` |
+| `planta` | `agua` |
+| `agua` | `fuego` |
+| `luz` | `sombra` |
+| `sombra` | `espiritu` |
+| `espiritu` | `luz` |
+
+### Example
+
+```javascript
+import { ADVANTAGES, CARD_TYPES } from './helpers/constants';
+
+// Check if attacker has type advantage
+const attacker = { type: CARD_TYPES.FUEGO };
+const defender = { type: CARD_TYPES.PLANTA };
+
+if (ADVANTAGES[attacker.type] === defender.type) {
+  console.log('Attacker has type advantage!');
+  // This will execute: Fuego beats Planta
+}
+
+// Check the full advantage map
+console.log(ADVANTAGES);
+// {
+//   fuego: 'planta',
+//   planta: 'agua',
+//   agua: 'fuego',
+//   luz: 'sombra',
+//   sombra: 'espiritu',
+//   espiritu: 'luz'
+// }
+```
+
+---
+
+## GAME_CONFIG
+
+Contains all game configuration constants that define core gameplay mechanics and limits.
+
+### Configuration Values
+
+<ResponseField name="MAX_HAND_SIZE" type="number" default={4}>
+  Maximum number of cards a player can hold in their hand
+</ResponseField>
+
+<ResponseField name="MAX_FIELD_SIZE" type="number" default={6}>
+  Maximum number of cards that can be on the battlefield at once
+</ResponseField>
+
+<ResponseField name="INITIAL_DECK_SIZE" type="number" default={48}>
+  Total number of cards in a player's deck at game start
+</ResponseField>
+
+<ResponseField name="TURN_TIME_LIMIT_MS" type="number" default={12000}>
+  Time limit per turn in milliseconds (12 seconds)
+</ResponseField>
+
+<ResponseField name="MANDATORY_ATTACK_TURN" type="number" default={3}>
+  Turn number when players must start attacking (turn 3)
+</ResponseField>
+
+<ResponseField name="UNIQUE_TYPES_TO_WIN" type="number" default={6}>
+  Number of unique card types needed in essence collection to win
+</ResponseField>
+
+<ResponseField name="ESSENCES_TO_WIN" type="number" default={6}>
+  Total number of essences needed to win the game
+</ResponseField>
+
+### Summary Table
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MAX_HAND_SIZE` | `4` | Maximum cards in hand |
+| `MAX_FIELD_SIZE` | `6` | Maximum cards on field |
+| `INITIAL_DECK_SIZE` | `48` | Cards in starting deck |
+| `TURN_TIME_LIMIT_MS` | `12000` | Turn timer (12 seconds) |
+| `MANDATORY_ATTACK_TURN` | `3` | Turn when attacks become mandatory |
+| `UNIQUE_TYPES_TO_WIN` | `6` | Unique types needed to win |
+| `ESSENCES_TO_WIN` | `6` | Total essences needed to win |
+
+### Example
+
+```javascript
+import { GAME_CONFIG } from './helpers/constants';
+
+// Check if hand is full
+function canDrawCard(hand) {
+  return hand.length < GAME_CONFIG.MAX_HAND_SIZE;
+}
+
+// Check if field is full
+function canPlayCard(field) {
+  return field.length < GAME_CONFIG.MAX_FIELD_SIZE;
+}
+
+// Set turn timer
+function startTurnTimer() {
+  return setTimeout(() => {
+    endTurn();
+  }, GAME_CONFIG.TURN_TIME_LIMIT_MS);
+}
+
+// Check win condition
+function checkWinCondition(essences) {
+  const uniqueTypes = new Set(essences.map(e => e.type)).size;
+  return uniqueTypes >= GAME_CONFIG.UNIQUE_TYPES_TO_WIN &&
+         essences.length >= GAME_CONFIG.ESSENCES_TO_WIN;
+}
+```
+
+### Source
+
+`Frontend/src/helpers/constants.js:1-27`

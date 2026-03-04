@@ -1,0 +1,740 @@
+---
+title: Contributing Guide
+description: Guidelines for contributing to Elemental Battlecards including development workflow, code structure, and best practices
+---
+
+## Getting Started
+
+Elemental Battlecards is an open-source multiplayer card game. We welcome contributions from developers of all skill levels!
+
+### Prerequisites
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    Version 16+ required for both backend and frontend
+  </Card>
+  <Card title="npm" icon="box">
+    Package manager (comes with Node.js)
+  </Card>
+  <Card title="Git" icon="git-alt">
+    Version control for cloning and submitting changes
+  </Card>
+  <Card title="Code Editor" icon="code">
+    VS Code recommended with Phaser extensions
+  </Card>
+</CardGroup>
+
+## Development Setup
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/elemental-battlecards.git
+cd elemental-battlecards
+```
+
+### Backend Setup
+
+<Steps>
+  <Step title="Navigate to Backend">
+    ```bash
+    cd Backend
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    npm install
+    ```
+    
+    Key dependencies:
+    - `express` - Web server
+    - `socket.io` - Real-time communication
+    - `sequelize` - Database ORM
+    - `bcryptjs` - Password hashing
+    - `jsonwebtoken` - Authentication
+  </Step>
+  
+  <Step title="Configure Environment">
+    Create a `.env` file:
+    
+    ```bash .env
+    PORT=3001
+    DB_ENABLED=true
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_NAME=battlecards_dev
+    DB_USER=postgres
+    DB_PASSWORD=your_password
+    JWT_SECRET=your_secret_key
+    ```
+  </Step>
+  
+  <Step title="Run Development Server">
+    ```bash
+    npm run dev
+    ```
+    
+    The server will start on `http://localhost:3001` with auto-reload via nodemon.
+  </Step>
+</Steps>
+
+### Frontend Setup
+
+<Steps>
+  <Step title="Navigate to Frontend">
+    ```bash
+    cd Frontend
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    npm install
+    ```
+    
+    Key dependencies:
+    - `phaser` - Game framework
+    - `vite` - Build tool
+    - `socket.io-client` - Real-time client
+  </Step>
+  
+  <Step title="Run Development Server">
+    ```bash
+    npm run dev
+    ```
+    
+    Vite will start the dev server with HMR at `http://localhost:5173`
+  </Step>
+</Steps>
+
+### Running Both Servers
+
+For full development, run both servers simultaneously:
+
+<Tabs>
+  <Tab title="Terminal 1 (Backend)">
+    ```bash
+    cd Backend
+    npm run dev
+    ```
+  </Tab>
+  
+  <Tab title="Terminal 2 (Frontend)">
+    ```bash
+    cd Frontend
+    npm run dev
+    ```
+  </Tab>
+</Tabs>
+
+Open `http://localhost:5173` in your browser to play.
+
+<Note>
+  The frontend automatically connects to `http://localhost:3001` for the backend API and Socket.IO.
+</Note>
+
+## Project Structure
+
+### Backend Structure
+
+```bash
+Backend/
+├── config/
+│   ├── config.js          # Database configuration
+│   └── db.js              # Database connection
+├── controllers/
+│   └── authController.js  # Authentication logic
+├── models/
+│   ├── index.js           # Sequelize models export
+│   └── user.js            # User model
+├── routes/
+│   └── authRoutes.js      # API route definitions
+├── migrations/            # Database migrations
+├── server.js              # Entry point
+├── socketManager.js       # Real-time game logic
+└── package.json
+```
+
+### Frontend Structure
+
+```bash
+Frontend/
+├── public/
+│   └── assets/
+│       └── images/        # All game assets
+├── src/
+│   ├── game_objects/      # Card, Player classes
+│   │   ├── card.js
+│   │   ├── card-definitions.js
+│   │   └── player.js
+│   ├── helpers/           # Utility functions
+│   │   ├── combat.js      # Battle resolution
+│   │   ├── constants.js   # Game constants
+│   │   └── zone.js        # Position helpers
+│   ├── scenes/            # Phaser scenes
+│   │   ├── LoginScene.js
+│   │   ├── RegisterScene.updated.js
+│   │   ├── Preloader.js
+│   │   ├── HomeScenes.js
+│   │   ├── CreateRoomScene.js
+│   │   ├── GameSceneLAN.js
+│   │   ├── GameScene.js
+│   │   └── uiScene.js
+│   └── main.js            # Phaser initialization
+├── index.html
+├── vite.config.js
+└── package.json
+```
+
+## Code Style Guide
+
+### JavaScript Conventions
+
+<CodeGroup>
+```javascript Classes
+// Use PascalCase for classes
+export default class CardController {
+    constructor(type, level) {
+        this.type = type;
+        this.level = level;
+    }
+}
+```
+
+```javascript Functions
+// Use camelCase for functions
+function calculateDamage(attacker, defender) {
+    // Implementation
+}
+```
+
+```javascript Constants
+// Use UPPER_SNAKE_CASE for constants
+const MAX_HAND_SIZE = 4;
+const CARD_TYPES = ['fuego', 'agua', 'planta', 'luz', 'sombra', 'espiritu'];
+```
+
+```javascript Phaser Scenes
+// Scenes extend Phaser.Scene
+export default class GameScene extends Phaser.Scene {
+    constructor() {
+        super('GameScene'); // Scene key
+    }
+    
+    init(data) {
+        // Receive data from previous scene
+    }
+    
+    preload() {
+        // Load assets
+    }
+    
+    create() {
+        // Initialize scene
+    }
+}
+```
+</CodeGroup>
+
+### File Naming
+
+- **Scenes**: `PascalCase.js` (e.g., `GameScene.js`)
+- **Utilities**: `camelCase.js` (e.g., `combat.js`)
+- **Constants**: `camelCase.js` (e.g., `constants.js`)
+- **Models**: `camelCase.js` (e.g., `user.js`)
+
+### Code Comments
+
+```javascript
+/**
+ * Resolves combat between two cards based on type advantages and levels.
+ * 
+ * @param {Card} attacker - The attacking card
+ * @param {Card} defender - The defending card
+ * @returns {string} Combat result: 'attacker_wins', 'defender_wins', or 'neutral'
+ */
+export function resolveCombat(attacker, defender) {
+    // Implementation
+}
+```
+
+## Adding New Features
+
+### Adding a New Card Type
+
+<Steps>
+  <Step title="Update Constants">
+    ```javascript Frontend/src/helpers/constants.js
+    export const CARD_TYPES = {
+        FUEGO: 'fuego',
+        AGUA: 'agua',
+        PLANTA: 'planta',
+        LUZ: 'luz',
+        SOMBRA: 'sombra',
+        ESPIRITU: 'espiritu',
+        TRUENO: 'trueno'  // New type
+    };
+    ```
+  </Step>
+  
+  <Step title="Add Card Definition">
+    ```javascript Frontend/src/game_objects/card-definitions.js
+    export const CardDefinitions = {
+        // ...
+        trueno: {
+            1: { texture: 'card-trueno-1' },
+            2: { texture: 'card-trueno-2' },
+            3: { texture: 'card-trueno-3' }
+        }
+    };
+    ```
+  </Step>
+  
+  <Step title="Add Combat Logic">
+    ```javascript Frontend/src/helpers/combat.js
+    const advantages = {
+        // ...
+        trueno: ['agua', 'espiritu']
+    };
+    ```
+  </Step>
+  
+  <Step title="Add Assets">
+    Place card images in `Frontend/public/assets/images/cartas/`:
+    - `carta-trueno-1.png`
+    - `carta-trueno-2.png`
+    - `carta-trueno-3.png`
+  </Step>
+  
+  <Step title="Preload Textures">
+    ```javascript Frontend/src/scenes/GameScene.js
+    preload() {
+        this.load.image('card-trueno-1', '/assets/images/cartas/carta-trueno-1.png');
+        this.load.image('card-trueno-2', '/assets/images/cartas/carta-trueno-2.png');
+        this.load.image('card-trueno-3', '/assets/images/cartas/carta-trueno-3.png');
+    }
+    ```
+  </Step>
+</Steps>
+
+### Adding a New Socket Event
+
+<Steps>
+  <Step title="Define Event in Backend">
+    ```javascript Backend/socketManager.js
+    socket.on('custom_event', (data) => {
+        // Validate data
+        if (!validateCustomEvent(data)) {
+            return;
+        }
+        
+        // Process event
+        const result = processCustomEvent(data);
+        
+        // Broadcast to room
+        io.to(socket.roomCode).emit('custom_event_result', result);
+    });
+    ```
+  </Step>
+  
+  <Step title="Emit from Frontend">
+    ```javascript Frontend/src/scenes/GameScene.js
+    performCustomAction(data) {
+        if (this.socket && this.isLAN) {
+            this.socket.emit('custom_event', data);
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Handle Response">
+    ```javascript Frontend/src/scenes/GameScene.js
+    create() {
+        if (this.socket) {
+            this.socket.on('custom_event_result', (result) => {
+                this.handleCustomEventResult(result);
+            });
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Document the Event">
+    Add documentation to the [Socket Events](/development/socket-events) page.
+  </Step>
+</Steps>
+
+### Adding a New Scene
+
+<Steps>
+  <Step title="Create Scene File">
+    ```javascript Frontend/src/scenes/TutorialScene.js
+    import Phaser from 'phaser';
+    
+    export default class TutorialScene extends Phaser.Scene {
+        constructor() {
+            super('TutorialScene');
+        }
+        
+        init(data) {
+            this.playerData = data.playerData;
+        }
+        
+        preload() {
+            // Load tutorial assets
+        }
+        
+        create() {
+            // Setup tutorial UI
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Register Scene">
+    ```javascript Frontend/src/main.js
+    import TutorialScene from './scenes/TutorialScene.js';
+    
+    const config = {
+        scene: [
+            LoginScene,
+            RegisterScene,
+            PreloaderScene,
+            HomeScenes,
+            TutorialScene,  // Add here
+            CreateRoomScene,
+            GameSceneLAN,
+            GameScene,
+            UIScene
+        ]
+    };
+    ```
+  </Step>
+  
+  <Step title="Add Navigation">
+    ```javascript Frontend/src/scenes/HomeScenes.js
+    const tutorialBtn = document.querySelector('#tutorial-btn');
+    tutorialBtn.addEventListener('click', () => {
+        this.scene.start('TutorialScene', { 
+            playerData: this.playerData 
+        });
+    });
+    ```
+  </Step>
+</Steps>
+
+## Testing
+
+### Manual Testing
+
+<Tabs>
+  <Tab title="Single Player">
+    1. Start backend and frontend servers
+    2. Open `http://localhost:5173`
+    3. Click "Jugar con bot"
+    4. Test game mechanics against AI
+  </Tab>
+  
+  <Tab title="Multiplayer (Local)">
+    1. Start backend and frontend servers
+    2. Open two browser windows
+    3. Window 1: Create room
+    4. Window 2: Join with room code
+    5. Play game between windows
+  </Tab>
+  
+  <Tab title="Multiplayer (LAN)">
+    1. Start backend with `npm run dev`
+    2. Note the network IP (e.g., `192.168.1.100:3001`)
+    3. On another device, navigate to `http://<IP>:5173?backend=http://<IP>:3001`
+    4. Create/join room and play
+  </Tab>
+</Tabs>
+
+### Debugging
+
+<CodeGroup>
+```javascript Browser Console
+// Enable socket debug logs
+localStorage.debug = 'socket.io-client:socket';
+
+// View game scene
+const gameScene = game.scene.getScene('GameScene');
+console.log(gameScene.player);
+console.log(gameScene.opponent);
+```
+
+```javascript Phaser Debugging
+// In GameScene.create()
+this.debugGraphics = this.add.graphics();
+
+// In GameScene.update()
+this.debugGraphics.clear();
+this.debugGraphics.lineStyle(2, 0xff0000);
+// Draw debug shapes
+```
+
+```bash Server Logs
+# Enable detailed socket logs
+DEBUG=socket.io* npm run dev
+
+# View active rooms
+curl http://localhost:3001/ping
+```
+</CodeGroup>
+
+## Git Workflow
+
+### Branching Strategy
+
+```bash
+# Create feature branch
+git checkout -b feature/add-new-card-type
+
+# Create bugfix branch
+git checkout -b fix/combat-calculation
+
+# Create documentation branch
+git checkout -b docs/update-api-reference
+```
+
+### Commit Messages
+
+Follow conventional commit format:
+
+```bash
+# Feature
+git commit -m "feat: add thunder card type with combat advantages"
+
+# Bug fix
+git commit -m "fix: resolve combat calculation for level 3 cards"
+
+# Documentation
+git commit -m "docs: add socket events reference"
+
+# Refactor
+git commit -m "refactor: extract combat logic to helper function"
+
+# Style
+git commit -m "style: format code according to style guide"
+```
+
+### Pull Request Process
+
+<Steps>
+  <Step title="Push Your Branch">
+    ```bash
+    git push origin feature/add-new-card-type
+    ```
+  </Step>
+  
+  <Step title="Create Pull Request">
+    - Go to GitHub repository
+    - Click "New Pull Request"
+    - Select your branch
+    - Fill out PR template
+  </Step>
+  
+  <Step title="PR Checklist">
+    - [ ] Code follows style guide
+    - [ ] All tests pass
+    - [ ] Documentation updated
+    - [ ] No console errors
+    - [ ] Tested in multiple browsers
+  </Step>
+  
+  <Step title="Address Review Comments">
+    Make requested changes and push updates:
+    ```bash
+    git add .
+    git commit -m "fix: address PR review comments"
+    git push
+    ```
+  </Step>
+</Steps>
+
+## Common Tasks
+
+### Adding a Database Model
+
+```javascript Backend/models/gameStats.js
+module.exports = (sequelize, DataTypes) => {
+    const GameStats = sequelize.define('GameStats', {
+        userId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: { model: 'users', key: 'id' }
+        },
+        gamesPlayed: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0
+        },
+        gamesWon: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0
+        }
+    }, {
+        tableName: 'game_stats',
+        timestamps: true
+    });
+    
+    return GameStats;
+};
+```
+
+Create migration:
+
+```bash
+npx sequelize-cli migration:generate --name create-game-stats
+```
+
+### Updating Card Assets
+
+1. Place new images in `Frontend/public/assets/images/cartas/`
+2. Use naming convention: `carta-{type}-{level}.png`
+3. Recommended size: 200x287px (aspect ratio 0.7)
+4. Format: PNG with transparency
+
+### Modifying Combat Logic
+
+Edit `Frontend/src/helpers/combat.js`:
+
+```javascript
+export function resolveCombat(attacker, defender) {
+    // 1. Check level difference
+    const levelDiff = attacker.level - defender.level;
+    
+    if (levelDiff >= 2) return 'attacker_wins';
+    if (levelDiff <= -2) return 'defender_wins';
+    
+    // 2. Check type advantages
+    const advantage = getTypeAdvantage(attacker.type, defender.type);
+    
+    if (advantage === 'strong') return 'attacker_wins';
+    if (advantage === 'weak') return 'defender_wins';
+    
+    // 3. Neutral
+    return 'neutral';
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Socket connection refused">
+    **Problem**: Frontend cannot connect to backend
+    
+    **Solution**:
+    ```bash
+    # Verify backend is running
+    curl http://localhost:3001/ping
+    
+    # Check firewall settings
+    # Ensure port 3001 is open
+    ```
+  </Accordion>
+  
+  <Accordion title="Assets not loading">
+    **Problem**: Images or videos show as broken
+    
+    **Solution**:
+    ```javascript
+    // Check asset paths in preload
+    preload() {
+        // Paths are relative to public/
+        this.load.image('card', '/assets/images/cartas/card.png');
+        //                       ^ Note the leading slash
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Phaser scene not starting">
+    **Problem**: Scene stays blank or doesn't transition
+    
+    **Solution**:
+    ```javascript
+    // Check scene key matches
+    constructor() {
+        super('GameScene'); // Must match key used in scene.start()
+    }
+    
+    // Ensure scene is registered in main.js
+    scene: [GameScene, ...]
+    ```
+  </Accordion>
+  
+  <Accordion title="Database connection error">
+    **Problem**: Backend fails to connect to database
+    
+    **Solution**:
+    ```bash
+    # Check .env configuration
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_NAME=battlecards_dev
+    DB_USER=postgres
+    DB_PASSWORD=your_password
+    
+    # Test database connection
+    psql -h localhost -U postgres -d battlecards_dev
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Phaser 3 Docs" icon="book" href="https://photonstorm.github.io/phaser3-docs/">
+    Official Phaser 3 API documentation
+  </Card>
+  <Card title="Socket.IO Docs" icon="plug" href="https://socket.io/docs/">
+    Real-time communication guide
+  </Card>
+  <Card title="Sequelize Docs" icon="database" href="https://sequelize.org/docs/">
+    ORM documentation for database
+  </Card>
+  <Card title="Vite Docs" icon="bolt" href="https://vitejs.dev/">
+    Build tool and dev server
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+If you need assistance:
+
+1. Check existing [GitHub Issues](https://github.com/yourusername/elemental-battlecards/issues)
+2. Review this documentation
+3. Ask in project discussions
+4. Create a new issue with:
+   - Clear description of the problem
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Screenshots if applicable
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inclusive experience for everyone. Please:
+
+- Be respectful and constructive
+- Assume good intentions
+- Give and receive feedback gracefully
+- Focus on what is best for the community
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" href="/development/architecture">
+    Understand the system architecture
+  </Card>
+  <Card title="Game Scenes" href="/development/game-scenes">
+    Learn about Phaser scene structure
+  </Card>
+  <Card title="Socket Events" href="/development/socket-events">
+    Master real-time communication
+  </Card>
+</CardGroup>
+
+Thank you for contributing to Elemental Battlecards!

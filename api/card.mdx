@@ -1,0 +1,237 @@
+---
+title: "Card"
+description: "Represents a card in the game, extending Phaser.GameObjects.Sprite for visual representation and interaction handling."
+---
+
+## Overview
+
+The `Card` class represents an individual card in Elemental Battlecards. It extends `Phaser.GameObjects.Sprite` to provide both visual representation and game logic for card behavior, including attack states, leveling up, and face-up/face-down states.
+
+## Constructor
+
+<ParamField path="scene" type="Phaser.Scene" required>
+  The scene to which the card belongs
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  The initial x position
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  The initial y position
+</ParamField>
+
+<ParamField path="cardData" type="object" required>
+  The card data object containing:
+  - `id`: Card identifier (e.g., 'fuego-2')
+  - `type`: Card type from CardTypes
+  - `level`: Card level (1-3)
+  - `instanceId`: Unique instance identifier
+  - `owner`: Player who owns the card
+</ParamField>
+
+<ParamField path="isFaceDown" type="boolean" default="true">
+  Whether the card starts face down
+</ParamField>
+
+```javascript
+const cardData = {
+  id: 'fuego-1',
+  type: 'fuego',
+  level: 1,
+  instanceId: 'unique-id-123',
+  owner: 'player1'
+};
+
+const card = new Card(scene, 100, 200, cardData, true);
+```
+
+## Card Data Structure
+
+Every card is represented by a data object with the following properties:
+
+<ResponseField name="id" type="string" required>
+  Unique card definition ID (format: `type-level`, e.g., 'sombra-2', 'agua-3')
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  The elemental type of the card. Valid values:
+  - `fuego` (Fire)
+  - `agua` (Water)
+  - `planta` (Plant)
+  - `luz` (Light)
+  - `sombra` (Shadow)
+  - `espiritu` (Spirit)
+</ResponseField>
+
+<ResponseField name="level" type="number" required>
+  The card's level (1, 2, or 3). Level affects attack patterns and fusion capabilities.
+</ResponseField>
+
+<ResponseField name="instanceId" type="string" required>
+  A unique identifier for this specific card instance, generated using `Phaser.Math.RND.uuid()`. This allows tracking the same card across different game zones (hand, field, graveyard).
+</ResponseField>
+
+<ResponseField name="owner" type="string">
+  The player ID who owns this card ('player1' or 'player2')
+</ResponseField>
+
+## Properties
+
+<ResponseField name="scene" type="Phaser.Scene">
+  Reference to the Phaser scene
+</ResponseField>
+
+<ResponseField name="cardData" type="object">
+  Complete card data object
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  The card's elemental type
+</ResponseField>
+
+<ResponseField name="level" type="number">
+  Current level of the card (1-3)
+</ResponseField>
+
+<ResponseField name="isFaceDown" type="boolean">
+  Whether the card is currently face down
+</ResponseField>
+
+<ResponseField name="canAttack" type="boolean">
+  Whether the card can attack this turn
+</ResponseField>
+
+<ResponseField name="attackCooldown" type="number">
+  Number of turns the card must wait before attacking
+</ResponseField>
+
+<ResponseField name="consecutiveAttacks" type="number">
+  Counter for consecutive attacks (used for level 2 cards)
+</ResponseField>
+
+## Methods
+
+### reveal()
+
+Reveals the card, changing its texture from the back to show the card's type and level. Once revealed, a card cannot be hidden again.
+
+```javascript
+card.reveal();
+// Card texture changes to 'card-fuego-1'
+```
+
+**Texture Naming:** Revealed cards use the format `card-{type}-{level}` (e.g., `card-sombra-3`)
+
+### levelUp()
+
+Increases the card's level by 1 (up to a maximum of 3). Updates the texture if the card is already revealed. Used during fusion operations.
+
+```javascript
+card.levelUp();
+console.log(card.level); // Increased by 1
+```
+
+### updateAttackState()
+
+Called at the end of the owner's turn to update attack counters and availability based on the card's level and attack rules.
+
+```javascript
+card.updateAttackState();
+if (card.canAttack) {
+  console.log('Card can attack this turn');
+}
+```
+
+**Attack Rules by Level:**
+
+- **Level 1**: Can attack every turn (no restrictions)
+- **Level 2**: Attacks 2 consecutive turns, then rests 1 turn
+- **Level 3**: Attacks 1 turn, then rests 1 turn
+
+### registerAttack()
+
+Registers that the card has performed an attack and updates its state accordingly. Must be called after each attack action.
+
+```javascript
+if (card.canAttack) {
+  // Perform attack logic
+  card.registerAttack();
+}
+```
+
+**Behavior:**
+- For level 2 cards: Increments `consecutiveAttacks` counter
+- For level 3 cards: Sets `attackCooldown` to 1 (must rest next turn)
+- Automatically calls `updateAttackState()` after registering
+
+## Phaser GameObject Features
+
+Since Card extends `Phaser.GameObjects.Sprite`, it has access to all sprite methods:
+
+```javascript
+// Position and movement
+card.setPosition(x, y);
+card.setScale(0.5);
+
+// Interactivity (automatically set in constructor)
+card.setInteractive();
+
+// Data storage
+card.setData('startPosition', { x: 100, y: 200 });
+const instanceId = card.getData('instanceId');
+
+// Name for debugging
+card.setName(cardData.instanceId);
+```
+
+## Usage Example
+
+```javascript
+import Card from './card.js';
+
+class GameScene extends Phaser.Scene {
+  create() {
+    // Create a face-down card
+    const cardData = {
+      id: 'agua-1',
+      type: 'agua',
+      level: 1,
+      instanceId: Phaser.Math.RND.uuid(),
+      owner: 'player1'
+    };
+    
+    const card = new Card(this, 400, 300, cardData, true);
+    
+    // Reveal the card after a delay
+    this.time.delayedCall(1000, () => {
+      card.reveal();
+    });
+    
+    // Check if card can attack
+    if (card.canAttack) {
+      // Execute attack
+      this.performAttack(card);
+      card.registerAttack();
+    }
+    
+    // Update at end of turn
+    card.updateAttackState();
+  }
+}
+```
+
+## Card Definitions
+
+All card definitions are stored in the `CardDefinitions` object in `card-definitions.js`. Each card type has 3 levels:
+
+```javascript
+import { CardDefinitions } from './card-definitions.js';
+
+// Access a card definition
+const fireLevel2 = CardDefinitions['fuego-2'];
+console.log(fireLevel2); // { id: 'fuego-2', type: 'fuego', level: 2 }
+
+// Available card types: fuego, agua, planta, luz, sombra, espiritu
+// Available levels: 1, 2, 3
+```

@@ -1,0 +1,383 @@
+---
+title: 'Frontend Configuration'
+description: 'Configure the Elemental Battlecards frontend including Phaser game engine, Vite build tool, and Socket.IO client connection'
+---
+
+The frontend is built with Phaser 3 game engine and Vite as the build tool, providing a fast development experience and optimized production builds.
+
+## Dependencies
+
+The frontend uses minimal dependencies for a lean and performant application:
+
+```json package.json
+{
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "socket.io-client": "^4.7.2"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
+```
+
+### Core Dependencies
+
+<Accordion title="Phaser 3.90.0">
+  **Purpose:** HTML5 game framework for building the game interface
+  
+  **Key Features Used:**
+  - Scene management for different game states
+  - Sprite and texture rendering
+  - DOM element integration for UI
+  - Scale management for responsive design
+  - Video playback for backgrounds
+  
+  **Documentation:** [phaser.io](https://phaser.io/)
+</Accordion>
+
+<Accordion title="Socket.IO Client 4.7.2">
+  **Purpose:** Real-time bidirectional communication with the backend
+  
+  **Used For:**
+  - Room creation and joining
+  - Turn synchronization
+  - Game state updates
+  - Player actions (card play, attacks, fusions)
+  
+  **Documentation:** [socket.io](https://socket.io/)
+</Accordion>
+
+<Accordion title="Vite 5.4.21">
+  **Purpose:** Frontend build tool and development server
+  
+  **Benefits:**
+  - Lightning-fast hot module replacement (HMR)
+  - Optimized production builds
+  - ES modules support
+  - Network exposure for LAN play
+  
+  **Documentation:** [vitejs.dev](https://vitejs.dev/)
+</Accordion>
+
+## Phaser Configuration
+
+The main Phaser game configuration is defined in `main.js`:
+
+```javascript src/main.js:11-36
+const config = {
+    type: Phaser.AUTO,
+    dom: { createContainer: true },
+    width: 1600,
+    height: 1000,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    parent: 'game-container',
+    loader: {
+        generateMipmap: true
+    },
+    scene: [
+        LoginScene,
+        RegisterScene,
+        PreloaderScene,
+        HomeScenes,
+        CreateRoomScene,
+        GameSceneLAN,
+        GameScene,
+        UIScene
+    ]
+}
+```
+
+### Configuration Options
+
+<Accordion title="Renderer Configuration">
+  **type: Phaser.AUTO**
+  - Automatically chooses WebGL renderer if available, falls back to Canvas
+  - WebGL provides better performance for card animations and effects
+  
+  **dom: `{ createContainer: true }`**
+  - Enables DOM element integration within Phaser scenes
+  - Used for login forms, room codes, and UI overlays
+  - Location: Required for `LoginScene`, `RegisterScene`, `CreateRoomScene`
+</Accordion>
+
+<Accordion title="Display Configuration">
+  **width: 1600, height: 1000**
+  - Base resolution for the game canvas
+  - Optimized for 16:10 aspect ratio
+  
+  **scale.mode: Phaser.Scale.FIT**
+  - Scales the game to fit the browser window while maintaining aspect ratio
+  - Prevents distortion on different screen sizes
+  
+  **scale.autoCenter: Phaser.Scale.CENTER_BOTH**
+  - Centers the game canvas both horizontally and vertically
+  - Ensures consistent positioning across devices
+  
+  **parent: 'game-container'**
+  - Mounts the Phaser canvas inside this DOM element
+  - Must exist in your HTML: `<div id="game-container"></div>`
+</Accordion>
+
+<Accordion title="Asset Loading Configuration">
+  **loader.generateMipmap: true**
+  - Generates mipmaps during asset loading
+  - Prevents WebGL warnings and rendering stutters
+  - Improves texture quality at different scales
+  - Critical for card sprite rendering at various zoom levels
+  
+  <Info>
+    Mipmap generation happens once during loading, improving runtime performance without increasing loading time significantly.
+  </Info>
+</Accordion>
+
+<Accordion title="Scene Configuration">
+  Scenes are loaded in order, with the first scene starting automatically:
+  
+  1. **LoginScene** - Entry point for player authentication
+  2. **RegisterScene** - New player registration
+  3. **PreloaderScene** - Loads all game assets (cards, sounds, sprites)
+  4. **HomeScenes** - Main menu/lobby
+  5. **CreateRoomScene** - LAN room creation and joining
+  6. **GameSceneLAN** - LAN game transition scene
+  7. **GameScene** - Main gameplay scene
+  8. **UIScene** - Runs parallel to GameScene for HUD
+  
+  <Info>
+    The scene order defined in `main.js:36` determines the load order. Phaser automatically starts the first scene in the array.
+  </Info>
+</Accordion>
+
+## Socket.IO Client Configuration
+
+The frontend connects to the backend using Socket.IO with automatic server detection.
+
+### Server URL Detection
+
+The client automatically determines the backend URL using multiple fallback strategies:
+
+```javascript createRoomScene.js:185-195
+let SERVER_URL = null;
+if (params.get('backend')) {
+    SERVER_URL = params.get('backend');
+} else if (window.BACKEND_URL) {
+    SERVER_URL = window.BACKEND_URL;
+} else if (location.hostname !== 'localhost') {
+    SERVER_URL = `http://${location.hostname}:3001`;
+} else {
+    SERVER_URL = 'http://localhost:3001';
+}
+console.log('Usando BACKEND_URL =', SERVER_URL);
+this.socket = io(SERVER_URL);
+```
+
+### URL Detection Priority
+
+<Steps>
+  <Step title="Query Parameter (Highest Priority)">
+    Check for `?backend=` URL parameter
+    
+    **Example:**
+    ```
+    http://192.168.1.100:5173?backend=http://192.168.1.200:3001
+    ```
+    
+    **Use Case:** Override backend URL for testing or connecting to a specific server
+  </Step>
+
+  <Step title="Window Global Variable">
+    Check for `window.BACKEND_URL` set in HTML
+    
+    **Example:**
+    ```html index.html
+    <script>
+      window.BACKEND_URL = 'http://192.168.1.100:3001';
+    </script>
+    ```
+    
+    **Use Case:** Static configuration for specific deployments
+  </Step>
+
+  <Step title="Hostname Detection (LAN Mode)">
+    If not localhost, use current hostname with port 3001
+    
+    **Example:**
+    - Frontend: `http://192.168.1.100:5173`
+    - Auto-detected backend: `http://192.168.1.100:3001`
+    
+    **Use Case:** Automatic LAN configuration
+  </Step>
+
+  <Step title="Localhost Fallback (Lowest Priority)">
+    Default to `http://localhost:3001`
+    
+    **Use Case:** Local development
+  </Step>
+</Steps>
+
+<Info>
+  The same detection logic is implemented in both `createRoomScene.js:185-195` and `GameSceneLAN.js:22-30`.
+</Info>
+
+## Vite Configuration
+
+### Development Server
+
+The `dev` script in `package.json` includes the `--host` flag:
+
+```json package.json:8
+"dev": "vite --host"
+```
+
+**What `--host` does:**
+- Exposes the dev server to the local network
+- Allows other devices to connect via your IP address
+- Essential for LAN multiplayer testing
+
+**Output example:**
+```
+Local:   http://localhost:5173
+Network: http://192.168.1.100:5173
+```
+
+### Build Configuration
+
+For production builds:
+
+```json package.json:9
+"build": "vite build"
+```
+
+This creates an optimized production build in the `dist/` directory with:
+- Minified JavaScript
+- Optimized assets
+- Tree-shaken dependencies
+- Code splitting for faster loading
+
+## Environment-Specific Configuration
+
+### Local Development
+
+```bash
+cd Frontend
+npm install
+npm run dev
+```
+
+- Backend: `http://localhost:3001`
+- Frontend: `http://localhost:5173`
+- Single machine, both services running locally
+
+### LAN Play (Host)
+
+```bash
+cd Frontend
+npm run dev
+```
+
+- Backend: `http://0.0.0.0:3001`
+- Frontend: `http://0.0.0.0:5173`
+- Accessible from network at `http://[YOUR_IP]:5173`
+
+### LAN Play (Guest)
+
+No installation needed, just open:
+```
+http://[HOST_IP]:5173
+```
+
+The client automatically detects the backend at `http://[HOST_IP]:3001`
+
+## Game Container Setup
+
+Ensure your HTML file has the required container element:
+
+```html index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elemental Battlecards</title>
+</head>
+<body>
+  <div id="game-container"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+```
+
+<Warning>
+  The `game-container` div must exist before Phaser initializes, or the game will fail to mount.
+</Warning>
+
+## Asset Organization
+
+Assets should be organized in the `public/` directory for Vite to serve them correctly:
+
+```
+Frontend/
+├── public/
+│   └── assets/
+│       ├── images/
+│       │   ├── cards/
+│       │   └── home.mp4
+│       ├── sounds/
+│       └── sprites/
+├── src/
+│   ├── scenes/
+│   └── main.js
+└── package.json
+```
+
+<Info>
+  Files in `public/` are served at the root path. Reference them as `/assets/images/card.png`, not `./assets/images/card.png`.
+</Info>
+
+## Debugging Configuration
+
+To debug Socket.IO connections, check the browser console for:
+
+```javascript
+console.log('Usando BACKEND_URL =', SERVER_URL);
+```
+
+This appears in both `createRoomScene.js:195` and shows which backend URL the client is connecting to.
+
+### Common Console Messages
+
+- `"Usando BACKEND_URL = http://192.168.1.100:3001"` - Successful detection
+- Socket connection errors - Backend not running or firewall blocking
+- CORS errors - Backend CORS configuration issue
+
+## Performance Optimization
+
+<Accordion title="Production Build">
+  Run a production build for optimal performance:
+  
+  ```bash
+  npm run build
+  ```
+  
+  Benefits:
+  - 80-90% smaller bundle size
+  - Faster load times
+  - Tree-shaken dependencies
+  - Minified code
+</Accordion>
+
+<Accordion title="Asset Optimization">
+  - Use compressed textures for card sprites
+  - Enable `generateMipmap: true` for better texture scaling
+  - Preload assets in `PreloaderScene`
+  - Use sprite atlases instead of individual images
+</Accordion>
+
+<Accordion title="Network Optimization">
+  - Socket.IO automatically uses WebSocket with fallback to polling
+  - Keep payload sizes small in Socket events
+  - Batch game state updates when possible
+</Accordion>

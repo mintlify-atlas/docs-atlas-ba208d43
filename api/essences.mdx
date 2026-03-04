@@ -1,0 +1,242 @@
+---
+title: "EssenceManager"
+description: "Manages the state of elemental essences for a player, handling activation and queries of essence types."
+---
+
+## Overview
+
+The `EssenceManager` class encapsulates the logic for managing elemental essences in Elemental Battlecards. Each player has an EssenceManager that tracks which elemental types have been activated, enabling certain game mechanics and card abilities.
+
+## Constructor
+
+Initializes the essence manager with all essences in a deactivated state.
+
+```javascript
+import EssenceManager from './essences.js';
+
+const essences = new EssenceManager();
+```
+
+**Initial State:** All six elemental essences start as `false` (deactivated):
+- Fire (fuego)
+- Water (agua)
+- Plant (planta)
+- Light (luz)
+- Shadow (sombra)
+- Spirit (espiritu)
+
+## Properties
+
+<ResponseField name="_essences" type="Object.<string, boolean>" private>
+  Internal object mapping card types to their activation state. Uses `CardTypes` constants as keys.
+  
+  Structure:
+  ```javascript
+  {
+    'fuego': false,
+    'agua': false,
+    'planta': false,
+    'luz': false,
+    'sombra': false,
+    'espiritu': false
+  }
+  ```
+</ResponseField>
+
+## Methods
+
+### activate(type)
+
+Activates an essence of a specific elemental type. If the essence is already active, this method does nothing.
+
+<ParamField path="type" type="string" required>
+  The type of essence to activate, using values from `CardTypes` constants:
+  - `'fuego'` - Fire
+  - `'agua'` - Water
+  - `'planta'` - Plant
+  - `'luz'` - Light
+  - `'sombra'` - Shadow
+  - `'espiritu'` - Spirit
+</ParamField>
+
+```javascript
+import { CARD_TYPES as CardTypes } from '../helpers/constants.js';
+
+// Activate fire essence
+essences.activate(CardTypes.FUEGO);
+// Console: "Esencia de fuego activada."
+
+// Activate shadow essence
+essences.activate(CardTypes.SOMBRA);
+// Console: "Esencia de sombra activada."
+
+// Activate already active essence (no effect)
+essences.activate(CardTypes.FUEGO);
+// Console: "Esencia de fuego activada." (logged again, but state unchanged)
+```
+
+**Warning:** Attempting to activate an unknown essence type will log a warning:
+```javascript
+essences.activate('invalid-type');
+// Console: "Se intentó activar una esencia de tipo desconocido: invalid-type"
+```
+
+### has(type)
+
+Checks whether an essence of a specific type is currently active.
+
+<ParamField path="type" type="string" required>
+  The type of essence to check
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  Returns `true` if the essence is active, `false` otherwise
+</ResponseField>
+
+```javascript
+// Check if fire essence is active
+if (essences.has(CardTypes.FUEGO)) {
+  console.log('Fire essence is active!');
+} else {
+  console.log('Fire essence is not active');
+}
+
+// Check multiple essences
+const canPlayCard = essences.has(CardTypes.AGUA) && essences.has(CardTypes.PLANTA);
+if (canPlayCard) {
+  console.log('Both water and plant essences are active');
+}
+```
+
+### getAll()
+
+Returns a copy of the current state of all essences.
+
+<ResponseField name="return" type="Object.<string, boolean>">
+  An object with all essence types as keys and their activation states as boolean values
+</ResponseField>
+
+```javascript
+const allEssences = essences.getAll();
+console.log(allEssences);
+/*
+{
+  'fuego': true,
+  'agua': false,
+  'planta': false,
+  'luz': false,
+  'sombra': true,
+  'espiritu': false
+}
+*/
+
+// Count active essences
+const activeCount = Object.values(allEssences).filter(active => active).length;
+console.log(`${activeCount} essences are active`);
+```
+
+**Note:** This method returns a shallow copy using the spread operator (`{...this._essences}`), so modifying the returned object won't affect the internal state.
+
+## Usage Example
+
+```javascript
+import EssenceManager from './essences.js';
+import { CARD_TYPES as CardTypes } from '../helpers/constants.js';
+
+class GameScene extends Phaser.Scene {
+  create() {
+    // Create essence manager for a player
+    const playerEssences = new EssenceManager();
+    
+    // Activate essences as cards are played
+    this.events.on('cardPlayed', (cardType) => {
+      playerEssences.activate(cardType);
+      
+      // Check if specific essence is active
+      if (playerEssences.has(CardTypes.FUEGO)) {
+        this.enableFireAbilities();
+      }
+    });
+    
+    // Display essence status
+    this.updateEssenceDisplay(playerEssences.getAll());
+    
+    // Check for combos
+    if (playerEssences.has(CardTypes.AGUA) && playerEssences.has(CardTypes.FUEGO)) {
+      console.log('Steam combo available!');
+    }
+    
+    // Count total active essences
+    const essenceState = playerEssences.getAll();
+    const activeEssences = Object.entries(essenceState)
+      .filter(([type, active]) => active)
+      .map(([type]) => type);
+    
+    console.log(`Active essences: ${activeEssences.join(', ')}`);
+  }
+}
+```
+
+## Integration with Player
+
+The EssenceManager is automatically created and managed by the Player class:
+
+```javascript
+import Player from './player.js';
+
+const player = new Player('player1', scene);
+
+// Access player's essences
+player.essences.activate(CardTypes.LUZ);
+
+if (player.essences.has(CardTypes.LUZ)) {
+  console.log('Player has activated light essence');
+}
+
+// Get all essence states for UI display
+const essenceStates = player.essences.getAll();
+this.updateEssenceUI(essenceStates);
+```
+
+## Card Types Reference
+
+Use the `CARD_TYPES` constant for type-safe essence operations:
+
+```javascript
+import { CARD_TYPES as CardTypes } from '../helpers/constants.js';
+
+// Available card types:
+CardTypes.FUEGO      // 'fuego' - Fire
+CardTypes.AGUA       // 'agua' - Water
+CardTypes.PLANTA     // 'planta' - Plant
+CardTypes.LUZ        // 'luz' - Light
+CardTypes.SOMBRA     // 'sombra' - Shadow
+CardTypes.ESPIRITU   // 'espiritu' - Spirit
+```
+
+## Typical Workflow
+
+```javascript
+// 1. Initialize (automatically done by Player)
+const essences = new EssenceManager();
+
+// 2. Activate essences during gameplay
+function onCardPlayed(card) {
+  essences.activate(card.type);
+}
+
+// 3. Check essences for game logic
+function canUseSpecialAbility(requiredType) {
+  return essences.has(requiredType);
+}
+
+// 4. Display essence status in UI
+function updateUI() {
+  const allEssences = essences.getAll();
+  
+  for (const [type, isActive] of Object.entries(allEssences)) {
+    const icon = this.essenceIcons[type];
+    icon.setAlpha(isActive ? 1.0 : 0.3);
+  }
+}
+```
